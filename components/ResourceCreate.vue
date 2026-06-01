@@ -35,6 +35,9 @@ async function onSuccess(response: unknown) {
           :endpoint="definition.createEndpoint"
           method="POST"
           submit-label="Создать"
+          :background-redirect-to="backTo"
+          :background-label="`Создание: ${definition.title}`"
+          :background-result-route-base="definition.detailRoute || ''"
           @success="onSuccess"
         />
       </div>

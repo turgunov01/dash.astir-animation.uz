@@ -6,5 +6,5 @@ const definition = resourceDefinitions.series
 </script>
 
 <template>
-  <ResourceTable :definition="definition" />
+  <ContentCatalog :definition="definition" />
 </template>

@@ -59,10 +59,10 @@ const permissionFields: ResourceField[] = [
 
 const movieFields: ResourceField[] = [
   ...localizedTitleDescription,
-  { key: 'series', label: 'Series IDs', type: 'json', help: 'JSON-массив связанных series/episode id.' },
+  { key: 'series', label: 'Series', type: 'select' },
   { key: 'is_premium', label: 'Премиум', type: 'checkbox' },
   { key: 'source', label: 'Источник', type: 'text' },
-  { key: 'transcode_status', label: 'Статус транскодинга', type: 'text' }
+  // { key: 'transcode_status', label: 'Статус транскодинга', type: 'text' }
 ]
 
 const seriesFields: ResourceField[] = [
@@ -258,18 +258,6 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
       }
     ],
     formFields: movieFields,
-    related: [{ title: 'Связанные series/episodes', endpoint: '/v1/content/movies/{id}/series' }],
-    tools: [
-      {
-        title: 'Добавить child movie / episode',
-        endpoint: '/v1/content/movies/{id}/series',
-        method: 'POST',
-        fields: [
-          { key: 'seriesId', label: 'Series ID', type: 'text', required: true },
-          { key: 'episodeId', label: 'Episode ID', type: 'text' }
-        ]
-      }
-    ]
   },
   categories: {
     key: 'categories',

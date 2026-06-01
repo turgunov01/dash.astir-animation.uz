@@ -6,6 +6,7 @@ const props = defineProps<{
 }>()
 
 const api = useApi()
+const uploadQueue = useUploadQueueStore()
 const search = ref('')
 const filterValues = ref<Record<string, unknown>>({})
 const page = ref(1)
@@ -16,10 +17,22 @@ const loading = ref(false)
 const deleting = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
 const deleteTarget = ref<Record<string, unknown> | null>(null)
+const handledUploadTaskIds = new Set<string>()
 
 const hasNextPage = computed(() => page.value * limit < total.value)
 
 watch([search, filterValues, page], () => load(), { deep: true })
+watch(
+  () => uploadQueue.tasks.map((task) => `${task.id}:${task.status}:${task.completedAt || ''}`).join('|'),
+  () => {
+    const completed = uploadQueue.tasks.filter(
+      (task) => task.status === 'success' && task.completedAt && !handledUploadTaskIds.has(task.id)
+    )
+    const shouldReload = completed.some((task) => isRelatedUploadEndpoint(task.endpoint))
+    for (const task of completed) handledUploadTaskIds.add(task.id)
+    if (shouldReload) void load()
+  }
+)
 onMounted(load)
 
 async function load() {
@@ -54,6 +67,25 @@ function rowRoute(row: Record<string, unknown>): string {
 
 function openDelete(row: Record<string, unknown>) {
   deleteTarget.value = row
+}
+
+function isRelatedUploadEndpoint(endpoint: string): boolean {
+  const candidates = [
+    props.definition.createEndpoint,
+    props.definition.updateEndpoint,
+    ...(props.definition.tools || []).map((tool) => tool.endpoint)
+  ].filter(Boolean) as string[]
+
+  return candidates.some((candidate) => endpointMatches(candidate, endpoint))
+}
+
+function endpointMatches(template: string, endpoint: string): boolean {
+  if (template === endpoint) return true
+
+  const escaped = template
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\\\{[^}]+\\\}/g, '[^/]+')
+  return new RegExp(`^${escaped}$`).test(endpoint)
 }
 
 async function confirmDelete() {

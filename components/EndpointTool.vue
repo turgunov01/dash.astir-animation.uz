@@ -4,6 +4,7 @@ import type { EndpointToolDefinition } from '~/types/api'
 defineProps<{
   tool: EndpointToolDefinition
   context?: Record<string, unknown>
+  redirectTo?: string
 }>()
 
 const result = ref<unknown>(null)
@@ -27,6 +28,9 @@ const result = ref<unknown>(null)
         :method="tool.method"
         :context="context || {}"
         :path-params="tool.pathParams || []"
+        :background-redirect-to="redirectTo || ''"
+        :background-label="tool.title"
+        :background-result-route-base="redirectTo || ''"
         :submit-label="tool.danger ? 'Выполнить опасное действие' : 'Выполнить'"
         @success="result = $event"
       />

@@ -94,13 +94,22 @@ function columnsFor(entry: RelatedEndpointDefinition) {
               :endpoint="definition.updateEndpoint"
               :method="definition.updateMethod || 'PUT'"
               :context="context"
+              :background-redirect-to="definition.detailRoute || ''"
+              :background-label="`Обновление: ${definition.title}`"
+              :background-result-route-base="definition.detailRoute || ''"
               submit-label="Сохранить изменения"
               @success="load"
             />
           </div>
         </div>
 
-        <EndpointTool v-for="tool in definition.tools || []" :key="tool.title" :tool="tool" :context="context" />
+        <EndpointTool
+          v-for="tool in definition.tools || []"
+          :key="tool.title"
+          :tool="tool"
+          :context="context"
+          :redirect-to="definition.detailRoute || ''"
+        />
 
         <div v-for="entry in definition.related || []" :key="entry.title" class="panel">
           <div class="panel-header">
@@ -134,14 +143,6 @@ function columnsFor(entry: RelatedEndpointDefinition) {
           </div>
         </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <h2 style="margin: 0; font-size: 18px;">Raw JSON</h2>
-          </div>
-          <div class="panel-body">
-            <pre class="code">{{ JSON.stringify(item, null, 2) }}</pre>
-          </div>
-        </div>
       </div>
 
       <MetadataCard :item="item" />

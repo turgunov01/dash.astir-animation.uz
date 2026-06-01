@@ -6,5 +6,5 @@ const definition = resourceDefinitions.series
 </script>
 
 <template>
-  <ResourceCreate :definition="definition" back-to="/content/series" />
+  <ContentCreateModal :definition="definition" content-type="series" back-to="/content/series" />
 </template>

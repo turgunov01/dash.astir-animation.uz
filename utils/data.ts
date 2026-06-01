@@ -45,13 +45,36 @@ export function normalizeList(payload: unknown): { items: Record<string, unknown
 
   if (unwrapped && typeof unwrapped === 'object') {
     const record = unwrapped as Record<string, unknown>
-    const candidates = [record.items, record.results, record.rows, record.docs, record.list]
+    const candidates = [
+      record.items,
+      record.results,
+      record.rows,
+      record.docs,
+      record.list,
+      record.records,
+      record.entities,
+      record.data,
+      record.movies,
+      record.categories,
+      record.series,
+      record.episodes,
+      record.children,
+      record.users,
+      record.tariffs,
+      record.subscriptions,
+      record.transactions,
+      record.cards,
+      record.chats,
+      record.faqs,
+      record.content,
+      record.contents
+    ]
     const list = candidates.find(Array.isArray)
 
     if (Array.isArray(list)) {
       return {
         items: list as Record<string, unknown>[],
-        total: numericValue(record.total) ?? numericValue(record.count) ?? list.length
+        total: extractTotal(record) ?? list.length
       }
     }
   }
@@ -101,6 +124,34 @@ export function formatDateTime(value: unknown): string {
 function numericValue(value: unknown): number | undefined {
   const numeric = Number(value)
   return Number.isFinite(numeric) ? numeric : undefined
+}
+
+function extractTotal(record: Record<string, unknown>): number | undefined {
+  const direct =
+    numericValue(record.total) ??
+    numericValue(record.count) ??
+    numericValue(record.totalCount) ??
+    numericValue(record.total_items) ??
+    numericValue(record.totalItems)
+
+  if (direct !== undefined) return direct
+
+  for (const key of ['meta', 'pagination']) {
+    const nested = record[key]
+    if (nested && typeof nested === 'object') {
+      const nestedRecord = nested as Record<string, unknown>
+      const nestedTotal =
+        numericValue(nestedRecord.total) ??
+        numericValue(nestedRecord.count) ??
+        numericValue(nestedRecord.totalCount) ??
+        numericValue(nestedRecord.total_items) ??
+        numericValue(nestedRecord.totalItems)
+
+      if (nestedTotal !== undefined) return nestedTotal
+    }
+  }
+
+  return undefined
 }
 
 function buildPathCandidates(path: string): string[] {

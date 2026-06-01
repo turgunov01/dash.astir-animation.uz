@@ -2,6 +2,9 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: false,
   devtools: { enabled: true },
+  experimental: {
+    viteEnvironmentApi: true
+  },
   modules: ['@nuxt/ui', '@pinia/nuxt'],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {

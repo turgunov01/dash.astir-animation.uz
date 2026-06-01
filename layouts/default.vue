@@ -81,5 +81,7 @@ function toggleTheme() {
         <slot />
       </main>
     </div>
+
+    <UploadQueueStatus />
   </div>
 </template>
