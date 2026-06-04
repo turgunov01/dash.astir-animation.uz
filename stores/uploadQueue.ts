@@ -207,6 +207,8 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
       updateTask(id, {
         status: uploadError.code === 'cancelled' ? 'cancelled' : 'error',
         error: uploadError.message,
+        responseStatus: uploadError.statusCode,
+        response: uploadError.raw,
         completedAt: Date.now(),
         etaSeconds: undefined
       })

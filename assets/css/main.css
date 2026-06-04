@@ -1000,6 +1000,112 @@ textarea {
   gap: 8px;
 }
 
+.series-episode-form {
+  display: grid;
+  gap: 14px;
+}
+
+.series-episode-files {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.series-episode-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.series-episode-list {
+  margin-top: 20px;
+}
+
+.series-episode-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.series-episode-card {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 142px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.series-episode-card-poster {
+  display: grid;
+  aspect-ratio: 2 / 3;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  background: var(--surface-soft);
+  color: var(--muted);
+}
+
+.series-episode-card-poster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.series-episode-card-poster .app-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.series-episode-card-body {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.series-episode-card-head,
+.series-episode-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.series-episode-card-head {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.series-episode-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.series-episode-card p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.series-episode-card-actions {
+  margin-top: 4px;
+}
+
+.series-episode-table {
+  margin-top: 16px;
+}
+
 .poster-upload {
   width: 100%;
   overflow: hidden;
@@ -2026,6 +2132,7 @@ textarea {
   .content-form-layout,
   .content-number-grid,
   .movie-media-panel,
+  .series-episode-files,
   .localized-row {
     grid-template-columns: 1fr;
   }

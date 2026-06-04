@@ -14,6 +14,7 @@ const activeSaving = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
 
 const context = computed(() => ({ id: props.id, ...(item.value || {}) }))
+const visibleRelatedEntries = computed(() => (props.definition.key === 'series' ? [] : props.definition.related || []))
 const isCategoryResource = computed(() => props.definition.key === 'categories')
 const categoryActive = computed(() => normalizeBooleanValue(getResourceValue(item.value, 'active')))
 const pageTitle = computed(() => {
@@ -57,7 +58,7 @@ async function load() {
 
 async function loadRelated() {
   const entries = await Promise.all(
-    (props.definition.related || []).map(async (entry) => {
+    visibleRelatedEntries.value.map(async (entry) => {
       try {
         const response = await api.get(resolveEndpoint(entry.endpoint, context.value))
         return [entry.title, normalizeList(response).items] as const
@@ -176,6 +177,13 @@ function normalizeBooleanValue(value: unknown): boolean {
           @updated="load"
         />
 
+        <SeriesEpisodesPanel
+          v-if="definition.key === 'series'"
+          :series-id="id"
+          :series="item"
+          @updated="load"
+        />
+
         <div v-if="definition.updateEndpoint && definition.formFields?.length" class="panel">
           <div class="panel-header">
             <div>
@@ -217,7 +225,7 @@ function normalizeBooleanValue(value: unknown): boolean {
           :redirect-to="definition.detailRoute || ''"
         />
 
-        <div v-for="entry in definition.related || []" :key="entry.title" class="panel">
+        <div v-for="entry in visibleRelatedEntries" :key="entry.title" class="panel">
           <div class="panel-header">
             <div>
               <h2 style="margin: 0; font-size: 18px;">{{ entry.title }}</h2>

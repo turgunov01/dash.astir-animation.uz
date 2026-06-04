@@ -1,0 +1,1 @@
+import{a as t,E as a,h as s,L as o}from"./2xpiSV0J.js";const c={},n={class:"auth-page"};function r(e,_){return a(),s("main",n,[o(e.$slots,"default")])}const f=t(c,[["render",r]]);export{f as default};

@@ -1,0 +1,1 @@
+import{_ as t}from"./DwFhs52l.js";import{r as n}from"./CfOp_Q98.js";import{l as i,f as r,R as s,E as a}from"./2xpiSV0J.js";import"./Cn6lu8Ag.js";import"./cvzv_mp0.js";const k=i({__name:"create",setup(c){const o=n.movies;return(m,f)=>{const e=t;return a(),r(e,{definition:s(o),"content-type":"movie","back-to":"/content/movies"},null,8,["definition"])}}});export{k as default};

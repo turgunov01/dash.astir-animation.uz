@@ -78,11 +78,16 @@ const movieFields: ResourceField[] = [
   // { key: 'transcode_status', label: 'Статус транскодинга', type: 'text' }
 ]
 
+const seriesKindOptions = [
+  { label: 'Сезоны', value: 'seasons' },
+  { label: 'Эпизоды', value: 'episodes' }
+]
+
 const seriesFields: ResourceField[] = [
   { key: 'title', label: 'Название', type: 'localized', required: true },
   { key: 'description', label: 'Описание', type: 'localized', rows: 4 },
-  { key: 'age', label: 'Возрастной рейтинг', type: 'number' },
-  { key: 'is_premium', label: 'Премиум', type: 'checkbox' }
+  { key: 'kind', label: 'Тип сериала', type: 'select', options: seriesKindOptions, defaultValue: 'seasons' },
+  { key: 'active', label: 'Активен', type: 'checkbox', defaultValue: true }
 ]
 
 const tariffFields: ResourceField[] = [
@@ -346,7 +351,8 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
     columns: [
       { key: 'id', label: 'ID' },
       { key: 'title', label: 'Название', kind: 'localized' },
-      { key: 'is_premium', label: 'Премиум', kind: 'premium' },
+      { key: 'kind', label: 'Тип' },
+      { key: 'active', label: 'Активен', kind: 'boolean' },
       { key: 'episodesCount', label: 'Эпизодов', kind: 'number' },
       { key: 'createdAt', label: 'Создан', kind: 'date' }
     ],

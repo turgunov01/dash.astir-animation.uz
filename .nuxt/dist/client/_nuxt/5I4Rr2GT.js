@@ -1,0 +1,1 @@
+import{_ as n}from"./DwFhs52l.js";import{r as o}from"./CfOp_Q98.js";import{l as r,f as i,R as s,E as a}from"./2xpiSV0J.js";import"./Cn6lu8Ag.js";import"./cvzv_mp0.js";const k=r({__name:"create",setup(c){const e=o.series;return(f,m)=>{const t=n;return a(),i(t,{definition:s(e),"content-type":"series","back-to":"/content/series"},null,8,["definition"])}}});export{k as default};

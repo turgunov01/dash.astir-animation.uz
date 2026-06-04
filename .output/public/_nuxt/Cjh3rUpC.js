@@ -1,0 +1,1 @@
+import{_ as t}from"./SRYt10hO.js";import{r as e}from"./CfOp_Q98.js";import{l as i,f as r,R as s,E as a}from"./2xpiSV0J.js";import"./Cn6lu8Ag.js";import"./cvzv_mp0.js";import"./B4UyAeMy.js";const C=i({__name:"index",setup(m){const o=e.movies;return(c,f)=>{const n=t;return a(),r(n,{definition:s(o)},null,8,["definition"])}}});export{C as default};

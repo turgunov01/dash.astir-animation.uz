@@ -1,0 +1,9 @@
+{
+  "pid": 30292,
+  "startedAt": 1780274440174,
+  "command": "dev",
+  "cwd": "D:/projects/astir-dashboard",
+  "port": 3001,
+  "hostname": "0.0.0.0",
+  "url": "http://0.0.0.0:3001"
+}
