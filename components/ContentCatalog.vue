@@ -6,6 +6,7 @@ const props = defineProps<{
 }>()
 
 const api = useApi()
+const config = useRuntimeConfig()
 const uploadQueue = useUploadQueueStore()
 
 const items = ref<Record<string, unknown>[]>([])
@@ -18,23 +19,12 @@ const minAge = ref(0)
 const maxAge = ref(18)
 const likedOnly = ref(false)
 const selectedTags = ref<string[]>([])
+const tagOptions = ref<Array<{ id: string; label: string; slug: string }>>([])
+const tagsLoading = ref(false)
+const tagsLoadError = ref('')
 const fileInputs = ref<Record<string, HTMLInputElement | null>>({})
 const handledUploadTaskIds = new Set<string>()
-
-const tags = [
-  'Для взрослых',
-  'Приключения',
-  'Анимация',
-  'Комедия',
-  'Чёрный юмор',
-  'Демоны',
-  'Для детей',
-  'Мультивселенная',
-  'Русский',
-  'Научная фантастика',
-  'Фантастика',
-  'Короткометражка'
-]
+const visibleTagsLimit = 3
 
 watch([minAge, maxAge, likedOnly, selectedTags], () => load(), { deep: true })
 watch(
@@ -48,7 +38,10 @@ watch(
     if (shouldReload) void load()
   }
 )
-onMounted(load)
+onMounted(() => {
+  void loadTagOptions()
+  void load()
+})
 
 async function load() {
   if (!props.definition.listEndpoint) return
@@ -61,9 +54,9 @@ async function load() {
       min_age: minAge.value,
       max_age: maxAge.value,
       liked: likedOnly.value || undefined,
-      tags: selectedTags.value.join(',') || undefined
+      tag_ids: selectedTags.value.join(',') || undefined
     })
-    const normalized = normalizeList(response)
+    const normalized = normalizeList(response, props.definition.key)
     items.value = normalized.items
     total.value = normalized.total ?? normalized.items.length
   } catch (requestError) {
@@ -81,6 +74,46 @@ function toggleTag(tag: string) {
     : [...selectedTags.value, tag]
 }
 
+async function loadTagOptions() {
+  tagsLoading.value = true
+  tagsLoadError.value = ''
+
+  try {
+    const response = await api.get('/v1/content/tags', { limit: 100 })
+    const seen = new Set<string>()
+
+    tagOptions.value = normalizeList(response, 'tags').items
+      .map(toTagOption)
+      .filter((option): option is { id: string; label: string; slug: string } => {
+        if (!option || seen.has(option.id)) return false
+        seen.add(option.id)
+        return true
+      })
+
+    selectedTags.value = selectedTags.value.filter((tagId) => tagOptions.value.some((tag) => tag.id === tagId))
+  } catch {
+    tagsLoadError.value = 'Не удалось загрузить теги'
+    tagOptions.value = []
+    selectedTags.value = []
+  } finally {
+    tagsLoading.value = false
+  }
+}
+
+function toTagOption(item: Record<string, unknown>): { id: string; label: string; slug: string } | null {
+  const id = getItemId(item)
+  if (id === undefined) return null
+
+  const name = String(getResourceValue(item, 'name') || '').trim()
+  const slug = String(getResourceValue(item, 'slug') || '').trim()
+
+  return {
+    id: String(id),
+    label: name || slug || String(id),
+    slug
+  }
+}
+
 function rowKey(row: Record<string, unknown>) {
   return String(getItemId(row, props.definition.idKey) || JSON.stringify(row))
 }
@@ -94,53 +127,124 @@ function titleOf(row: Record<string, unknown>) {
   return pickLocalized(getObjectValue(row, 'title')) || String(getObjectValue(row, 'name') || 'Без названия')
 }
 
-function subtitleOf(row: Record<string, unknown>) {
-  return String(getObjectValue(row, 'slug') || getObjectValue(row, 'alias') || getItemId(row, props.definition.idKey) || '')
-}
-
 function posterOf(row: Record<string, unknown>) {
   const value =
-    getObjectValue(row, 'poster') ||
-    getObjectValue(row, 'posterUrl') ||
-    getObjectValue(row, 'poster_url') ||
-    getObjectValue(row, 'image') ||
-    getObjectValue(row, 'thumbnail')
-  return typeof value === 'string' ? value : ''
+    getResourceValue(row, 'poster_url') ??
+    getResourceValue(row, 'posterUrl') ??
+    getResourceValue(row, 'poster.url') ??
+    getResourceValue(row, 'poster') ??
+    getResourceValue(row, 'image_url') ??
+    getResourceValue(row, 'image') ??
+    getResourceValue(row, 'thumbnail_url') ??
+    getResourceValue(row, 'thumbnail')
+  const path = pickMediaPath(value)
+  return path ? mediaUrl(path) : ''
+}
+
+function mediaUrl(value: unknown): string {
+  const source = String(value || '')
+  if (!source) return ''
+  if (/^https?:\/\//i.test(source)) return source
+
+  const baseUrl = String(config.public.apiBaseUrl || '').replace(/\/$/, '')
+  return `${baseUrl}/${source.replace(/^\//, '')}`
 }
 
 function ageOf(row: Record<string, unknown>) {
-  const value = getObjectValue(row, 'age') || getObjectValue(row, 'age_rating') || getObjectValue(row, 'ageRating')
-  return value === undefined || value === null || value === '' ? '—' : `${value}+`
+  const value = getObjectValue(row, 'age') ?? getObjectValue(row, 'age_rating') ?? getObjectValue(row, 'ageRating')
+  const age = String(value ?? '').trim()
+  if (!age) return '—'
+  return age.endsWith('+') ? age : `${age}+`
 }
 
 function tagsOf(row: Record<string, unknown>) {
-  const value = getObjectValue(row, 'tags') || getObjectValue(row, 'categories') || getObjectValue(row, 'genres')
+  const value = getResourceValue(row, 'tags') || getResourceValue(row, 'categories') || getResourceValue(row, 'genres')
   if (!Array.isArray(value)) return []
   return value
-    .map((item) => (typeof item === 'object' ? pickLocalized(getObjectValue(item, 'title') || getObjectValue(item, 'name')) : String(item)))
+    .map((item) => {
+      if (item && typeof item === 'object') {
+        return (
+          pickLocalized(getObjectValue(item, 'title')) ||
+          pickLocalized(getObjectValue(item, 'name')) ||
+          pickLocalized(getObjectValue(item, 'label'))
+        )
+      }
+
+      return String(item)
+    })
     .filter(Boolean)
 }
 
-function statusOf(row: Record<string, unknown>) {
-  return String(getObjectValue(row, 'transcode_status') || getObjectValue(row, 'status') || 'uploaded')
+function visibleTagsOf(row: Record<string, unknown>) {
+  return tagsOf(row).slice(0, visibleTagsLimit)
 }
 
-function progressOf(row: Record<string, unknown>) {
-  const value = Number(getObjectValue(row, 'progress') || getObjectValue(row, 'transcode_progress') || 0)
-  return Number.isFinite(value) ? value : 0
+function hiddenTagsOf(row: Record<string, unknown>) {
+  return tagsOf(row).slice(visibleTagsLimit)
 }
 
-function sourceOf(row: Record<string, unknown>) {
-  return String(getObjectValue(row, 'source') || '—')
+function normalizedStatusOf(row: Record<string, unknown>) {
+  return String(getObjectValue(row, 'transcode_status') ?? getObjectValue(row, 'status') ?? '').toLowerCase()
 }
 
-function isPublished(row: Record<string, unknown>) {
+function publishedStateOf(row: Record<string, unknown>) {
   const value = getObjectValue(row, 'published') ?? getObjectValue(row, 'is_published') ?? getObjectValue(row, 'active')
-  return value === undefined ? 'Да' : value ? 'Да' : 'Нет'
+  if (value === undefined || value === null || value === '') return undefined
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value > 0
+
+  const normalized = String(value).toLowerCase()
+  if (['true', '1', 'yes', 'да', 'published', 'active'].includes(normalized)) return true
+  if (['false', '0', 'no', 'нет', 'draft', 'inactive', 'unpublished'].includes(normalized)) return false
+
+  return undefined
+}
+
+function isWaitingStatus(status: string) {
+  return ['pending', 'queued', 'waiting', 'uploaded'].includes(status)
+}
+
+function isProcessingStatus(status: string) {
+  return ['processing', 'in_progress', 'transcoding'].includes(status)
+}
+
+function isReadyStatus(status: string) {
+  return ['ready', 'done', 'completed', 'complete'].includes(status)
+}
+
+function isErrorStatus(status: string) {
+  return ['failed', 'fail', 'error', 'unavailable'].includes(status)
+}
+
+function isDraftStatus(status: string) {
+  return ['draft', 'new', 'created', 'inactive', 'unpublished', 'disabled'].includes(status)
+}
+
+function contentStatusOf(row: Record<string, unknown>) {
+  const status = normalizedStatusOf(row)
+
+  if (isErrorStatus(status)) return 'Ошибка'
+  if (isReadyStatus(status)) return 'Готово'
+  if (isProcessingStatus(status)) return 'Обработка'
+  if (isWaitingStatus(status)) return 'В очереди'
+  if (isDraftStatus(status) || publishedStateOf(row) === false) return 'Черновик'
+
+  return 'Опубликовано'
+}
+
+function statusToneOf(row: Record<string, unknown>) {
+  const label = contentStatusOf(row)
+  if (label === 'Ошибка') return 'danger'
+  if (label === 'В очереди' || label === 'Обработка') return 'warning'
+  if (label === 'Черновик') return 'neutral'
+  return 'success'
 }
 
 function ratingOf(row: Record<string, unknown>) {
-  return String(getObjectValue(row, 'rating') || getObjectValue(row, 'score') || '—')
+  const value = getObjectValue(row, 'rating') ?? getObjectValue(row, 'score')
+  const rating = String(value ?? '').trim()
+  if (!rating) return '—'
+  return rating.includes('★') || rating.includes('*') ? rating : `${rating} ★`
 }
 
 function triggerFile(row: Record<string, unknown>) {
@@ -218,18 +322,20 @@ async function confirmDelete() {
       </div>
       <div class="field">
         <span class="content-field-label">По тегам</span>
-        <div class="tag-list">
+        <div v-if="tagsLoading" class="field-hint">Загрузка тегов...</div>
+        <div v-else-if="tagOptions.length" class="tag-list">
           <button
-            v-for="tag in tags"
-            :key="tag"
+            v-for="tag in tagOptions"
+            :key="tag.id"
             class="tag-chip"
-            :class="{ active: selectedTags.includes(tag) }"
+            :class="{ active: selectedTags.includes(tag.id) }"
             type="button"
-            @click="toggleTag(tag)"
+            @click="toggleTag(tag.id)"
           >
-            {{ tag }}
+            {{ tag.label }}
           </button>
         </div>
+        <small v-else class="field-hint">{{ tagsLoadError || 'Теги в API пока не созданы.' }}</small>
       </div>
     </div>
 
@@ -245,17 +351,15 @@ async function confirmDelete() {
             <th>Теги</th>
             <th>Рейтинг</th>
             <th>Статус</th>
-            <th>Опубликовано</th>
-            <th>Источник</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           <tr v-if="loading">
-            <td colspan="9" class="catalog-state">Загрузка данных...</td>
+            <td colspan="7" class="catalog-state">Загрузка данных...</td>
           </tr>
           <tr v-else-if="!items.length">
-            <td colspan="9" class="catalog-state">Нет данных</td>
+            <td colspan="7" class="catalog-state">Нет данных</td>
           </tr>
           <tr v-for="row in items" v-else :key="rowKey(row)">
             <td class="poster-cell">
@@ -264,25 +368,25 @@ async function confirmDelete() {
             </td>
             <td>
               <strong class="catalog-title">{{ titleOf(row) }}</strong>
-              <span class="catalog-subtitle">{{ subtitleOf(row) }}</span>
             </td>
             <td><span class="age-pill">{{ ageOf(row) }}</span></td>
             <td>
               <div class="table-tags">
-                <span v-for="tag in tagsOf(row)" :key="tag" class="table-tag">{{ tag }}</span>
+                <span v-for="tag in visibleTagsOf(row)" :key="tag" class="table-tag">{{ tag }}</span>
+                <span
+                  v-if="hiddenTagsOf(row).length"
+                  class="table-tag table-tag-more"
+                  :title="hiddenTagsOf(row).join(', ')"
+                >
+                  ...
+                </span>
                 <span v-if="!tagsOf(row).length">—</span>
               </div>
             </td>
             <td>{{ ratingOf(row) }}</td>
             <td>
-              <div class="status-progress">
-                <span class="table-tag">{{ statusOf(row) }}</span>
-                <span>{{ progressOf(row) }}%</span>
-              </div>
-              <div class="thin-progress"><span :style="{ width: `${progressOf(row)}%` }" /></div>
+              <span class="table-tag status-tag" :class="statusToneOf(row)">{{ contentStatusOf(row) }}</span>
             </td>
-            <td>{{ isPublished(row) }}</td>
-            <td>{{ sourceOf(row) }}</td>
             <td>
               <div class="catalog-actions">
                 <NuxtLink class="button secondary small-action" :class="{ disabled: !rowRoute(row) }" :to="rowRoute(row) || '#'" title="Просмотр">

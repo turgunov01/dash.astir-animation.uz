@@ -14,6 +14,17 @@ export function useApi() {
 
   async function request<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
     const fetcher = $fetch as unknown as <Response>(request: string, opts: Record<string, unknown>) => Promise<Response>
+    const method = options.method || 'GET'
+    const startedAt = Date.now()
+    const debugStore = process.client ? useApiDebugStore() : null
+    const debugId = debugStore?.startRequest({
+      method,
+      path,
+      baseUrl: String(config.public.apiBaseUrl || ''),
+      query: options.query,
+      body: options.body,
+      source: 'admin-ui'
+    })
     const headers: Record<string, string> = {
       Accept: 'application/json',
       ...(options.headers || {})
@@ -26,31 +37,62 @@ export function useApi() {
     const execute = (token: string) =>
       fetcher<T>(path, {
         baseURL: String(config.public.apiBaseUrl || ''),
-        method: options.method || 'GET',
+        method,
         body: options.body,
         query: cleanQuery(options.query),
         headers: token ? { ...headers, Authorization: `Bearer ${token}` } : headers
       })
 
     try {
-      return await execute(auth.accessToken)
+      const response = await execute(auth.accessToken)
+      debugStore?.finishRequest(debugId, {
+        status: 'success',
+        durationMs: Date.now() - startedAt,
+        response
+      })
+      return response
     } catch (error) {
       const apiError = normalizeApiError(error)
 
       if (shouldRetryWithRefresh(path, apiError, options)) {
         const refreshed = await auth.refresh()
         if (refreshed) {
-          return await execute(auth.accessToken)
+          try {
+            const response = await execute(auth.accessToken)
+            debugStore?.finishRequest(debugId, {
+              status: 'success',
+              durationMs: Date.now() - startedAt,
+              response
+            })
+            return response
+          } catch (retryError) {
+            const retryApiError = normalizeApiError(retryError)
+            await handleUnauthorized(path, retryApiError)
+            debugStore?.finishRequest(debugId, {
+              status: 'error',
+              statusCode: retryApiError.statusCode,
+              durationMs: Date.now() - startedAt,
+              response: retryApiError.raw,
+              errorMessage: retryApiError.message,
+              errorCode: retryApiError.code,
+              requestId: retryApiError.requestId
+            })
+            throw retryApiError
+          }
         }
       }
 
-      if (apiError.statusCode === 401 && !isLoginRequest(path)) {
-        auth.clearSession()
-        if (process.client) {
-          await navigateTo({ path: '/login', query: { redirect: useRoute().fullPath } })
-        }
-      }
+      await handleUnauthorized(path, apiError)
 
+      debugStore?.finishRequest(debugId, {
+        status: 'error',
+        statusCode: apiError.statusCode,
+        durationMs: Date.now() - startedAt,
+        response: apiError.raw,
+        errorMessage: apiError.message,
+        errorCode: apiError.code,
+        requestId: apiError.requestId
+      })
       throw apiError
     }
   }
@@ -62,6 +104,16 @@ export function useApi() {
     put: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PUT', body }),
     patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
     remove: <T>(path: string, body?: unknown) => request<T>(path, { method: 'DELETE', body })
+  }
+}
+
+async function handleUnauthorized(path: string, error: ApiErrorInfo) {
+  if (error.statusCode !== 401 || isLoginRequest(path)) return
+
+  const auth = useAuthStore()
+  auth.clearSession()
+  if (process.client) {
+    await navigateTo({ path: '/login', query: { redirect: useRoute().fullPath } })
   }
 }
 

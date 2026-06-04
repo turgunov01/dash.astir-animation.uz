@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { resourceDefinitions } from '~/utils/resources'
-
 definePageMeta({ roles: ['admin', 'super_admin'] })
 const route = useRoute()
-const definition = resourceDefinitions.supportChats
 </script>
 
 <template>
-  <ResourceDetail :definition="definition" :id="String(route.params.id)" />
+  <SupportChatInbox :initial-chat-id="String(route.params.id)" />
 </template>

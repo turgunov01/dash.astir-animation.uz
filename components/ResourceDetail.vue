@@ -10,9 +10,31 @@ const api = useApi()
 const item = ref<Record<string, unknown> | null>(null)
 const related = ref<Record<string, Record<string, unknown>[]>>({})
 const loading = ref(false)
+const activeSaving = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
 
 const context = computed(() => ({ id: props.id, ...(item.value || {}) }))
+const isCategoryResource = computed(() => props.definition.key === 'categories')
+const categoryActive = computed(() => normalizeBooleanValue(getResourceValue(item.value, 'active')))
+const pageTitle = computed(() => {
+  if (isCategoryResource.value) {
+    return `Категория: ${pickLocalized(getResourceValue(item.value, 'title')) || 'Без названия'}`
+  }
+
+  if (props.definition.key === 'tags') {
+    return `Тег: ${String(getResourceValue(item.value, 'name') || getResourceValue(item.value, 'slug') || 'Без названия')}`
+  }
+
+  if (props.definition.key === 'movies') {
+    return `Фильм: ${pickLocalized(getResourceValue(item.value, 'title')) || 'Без названия'}`
+  }
+
+  if (props.definition.key === 'series') {
+    return `Сериал: ${pickLocalized(getResourceValue(item.value, 'title')) || 'Без названия'}`
+  }
+
+  return `${props.definition.title} #${props.id}`
+})
 
 onMounted(load)
 
@@ -24,7 +46,7 @@ async function load() {
 
   try {
     const response = await api.get(resolveEndpoint(props.definition.detailEndpoint, { id: props.id }))
-    item.value = unwrapPayload<Record<string, unknown>>(response)
+    item.value = unwrapPayload<Record<string, unknown>>(response, props.definition.key)
     await loadRelated()
   } catch (requestError) {
     error.value = requestError as ApiErrorInfo
@@ -56,6 +78,50 @@ function columnsFor(entry: RelatedEndpointDefinition) {
     { key: 'createdAt', label: 'Создан', kind: 'date' as const }
   ]
 }
+
+async function toggleCategoryActive() {
+  if (!isCategoryResource.value || !props.definition.updateEndpoint || !item.value) return
+
+  activeSaving.value = true
+  error.value = null
+
+  try {
+    const metadata = buildCategoryMetadata(!categoryActive.value)
+    const formData = new FormData()
+    formData.append('metadata', JSON.stringify(metadata))
+
+    await api.patch(resolveEndpoint(props.definition.updateEndpoint, context.value), formData)
+    await load()
+  } catch (requestError) {
+    error.value = requestError as ApiErrorInfo
+  } finally {
+    activeSaving.value = false
+  }
+}
+
+function buildCategoryMetadata(active: boolean): Record<string, unknown> {
+  const metadata: Record<string, unknown> = { active }
+
+  for (const key of ['title', 'description', 'type', 'slug']) {
+    const value = getResourceValue(item.value, key)
+    if (value !== undefined && value !== null && value !== '') metadata[key] = value
+  }
+
+  return metadata
+}
+
+function normalizeBooleanValue(value: unknown): boolean {
+  if (typeof value === 'boolean') return value
+  if (typeof value === 'number') return value > 0
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (['true', '1', 'yes', 'active'].includes(normalized)) return true
+    if (['false', '0', 'no', 'inactive'].includes(normalized)) return false
+  }
+
+  return Boolean(value)
+}
 </script>
 
 <template>
@@ -66,13 +132,30 @@ function columnsFor(entry: RelatedEndpointDefinition) {
           <AppIcon name="i-lucide-arrow-left" />
           Назад
         </NuxtLink>
-        <h1 class="page-title" style="margin-top: 12px;">{{ definition.title }} #{{ id }}</h1>
+        <h1 class="page-title" style="margin-top: 12px;">{{ pageTitle }}</h1>
         <p v-if="definition.description" class="page-description">{{ definition.description }}</p>
       </div>
-      <button class="button secondary" type="button" @click="load">
-        <AppIcon name="i-lucide-refresh-cw" />
-        Обновить
-      </button>
+      <div class="page-actions">
+        <button
+          v-if="isCategoryResource"
+          class="category-toggle-button"
+          :class="{ active: categoryActive }"
+          type="button"
+          role="switch"
+          :aria-checked="categoryActive"
+          :disabled="activeSaving"
+          @click="toggleCategoryActive"
+        >
+          <span class="category-toggle-track">
+            <span class="category-toggle-thumb" />
+          </span>
+          <span>{{ categoryActive ? 'Активна' : 'Неактивна' }}</span>
+        </button>
+        <button class="button secondary" type="button" @click="load">
+          <AppIcon name="i-lucide-refresh-cw" />
+          Обновить
+        </button>
+      </div>
     </div>
 
     <ApiErrorAlert :error="error" />
@@ -80,6 +163,19 @@ function columnsFor(entry: RelatedEndpointDefinition) {
 
     <div v-else-if="item" class="split-layout">
       <div class="grid">
+        <MovieMediaPanel
+          v-if="definition.key === 'movies'"
+          :movie-id="id"
+          :movie="item"
+          @updated="load"
+        />
+
+        <SeriesPosterPanel
+          v-if="definition.key === 'series'"
+          :series-id="id"
+          @updated="load"
+        />
+
         <div v-if="definition.updateEndpoint && definition.formFields?.length" class="panel">
           <div class="panel-header">
             <div>
@@ -97,11 +193,21 @@ function columnsFor(entry: RelatedEndpointDefinition) {
               :background-redirect-to="definition.detailRoute || ''"
               :background-label="`Обновление: ${definition.title}`"
               :background-result-route-base="definition.detailRoute || ''"
+              :force-multipart="definition.updateSubmit?.forceMultipart || false"
+              :metadata-key="definition.updateSubmit?.metadataKey || 'metadata'"
+              :metadata-fields="definition.updateSubmit?.metadataFields || []"
               submit-label="Сохранить изменения"
               @success="load"
             />
           </div>
         </div>
+
+        <MovieTagsPanel
+          v-if="definition.key === 'movies'"
+          :movie-id="id"
+          :movie="item"
+          @updated="load"
+        />
 
         <EndpointTool
           v-for="tool in definition.tools || []"
@@ -132,8 +238,8 @@ function columnsFor(entry: RelatedEndpointDefinition) {
                 <tbody>
                   <tr v-for="row in related[entry.title]" :key="String(getItemId(row) || JSON.stringify(row))">
                     <td v-for="column in columnsFor(entry)" :key="column.key">
-                      <StatusBadge v-if="column.kind === 'status'" :value="getObjectValue(row, column.key)" />
-                      <DateTimeCell v-else-if="column.kind === 'date'" :value="getObjectValue(row, column.key)" />
+                      <StatusBadge v-if="column.kind === 'status'" :value="getResourceValue(row, column.key)" />
+                      <DateTimeCell v-else-if="column.kind === 'date'" :value="getResourceValue(row, column.key)" />
                       <span v-else>{{ formatCellValue(row, column) || '—' }}</span>
                     </td>
                   </tr>

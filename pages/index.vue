@@ -21,9 +21,9 @@ const { data, pending, error } = await useAsyncData('overview-metrics', async ()
   ] = await Promise.all([
     safeCount('/api/v1/users'),
     safeCount('/api/v1/children'),
-    safeCount('/v1/content/movies'),
-    safeCount('/v1/content/categories'),
-    safeCount('/api/v1/series'),
+    safeCount('/v1/content/movies', 'movies'),
+    safeCount('/v1/content/categories', 'categories'),
+    safeCount('/api/v1/series', 'series'),
     safeCount('/api/v1/billing/subscriptions'),
     safeCount('/api/v1/billing/transactions'),
     safeCount('/api/v1/admin/support/chats'),
@@ -33,10 +33,11 @@ const { data, pending, error } = await useAsyncData('overview-metrics', async ()
   return { users, children, movies, categories, series, subscriptions, transactions, supportChats, health }
 })
 
-async function safeCount(endpoint: string): Promise<number | string> {
+async function safeCount(endpoint: string, resourceKey = ''): Promise<number | string> {
   try {
     const response = await api.get(endpoint, { limit: 1 })
-    return normalizeList(response).total ?? normalizeList(response).items.length
+    const normalized = normalizeList(response, resourceKey)
+    return normalized.total ?? normalized.items.length
   } catch {
     return '—'
   }
@@ -86,27 +87,6 @@ async function safeHealth(): Promise<Record<string, unknown>> {
           </div>
           <div class="panel-body">
             <pre class="code">{{ JSON.stringify(data?.health, null, 2) }}</pre>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-2" style="margin-top: 16px;">
-        <div class="panel">
-          <div class="panel-header">
-            <h2 style="margin: 0; font-size: 18px;">Content mix</h2>
-          </div>
-          <div class="panel-body meta-list">
-            <div class="meta-row"><span>Movies</span><strong>{{ data?.movies }}</strong></div>
-            <div class="meta-row"><span>Series</span><strong>{{ data?.series }}</strong></div>
-            <div class="meta-row"><span>Categories</span><strong>{{ data?.categories }}</strong></div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-header">
-            <h2 style="margin: 0; font-size: 18px;">Recent admin events</h2>
-          </div>
-          <div class="panel-body empty-state" style="min-height: 180px;">
-            Audit-log endpoint в ТЗ не указан. Виджет оставлен как read-only placeholder.
           </div>
         </div>
       </div>

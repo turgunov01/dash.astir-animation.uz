@@ -6,6 +6,7 @@ const props = defineProps<{
 }>()
 
 const api = useApi()
+const config = useRuntimeConfig()
 const uploadQueue = useUploadQueueStore()
 const search = ref('')
 const filterValues = ref<Record<string, unknown>>({})
@@ -48,7 +49,7 @@ async function load() {
       limit,
       ...filterValues.value
     })
-    const normalized = normalizeList(response)
+    const normalized = normalizeList(response, props.definition.key)
     items.value = normalized.items
     total.value = normalized.total ?? normalized.items.length
   } catch (requestError) {
@@ -63,6 +64,47 @@ async function load() {
 function rowRoute(row: Record<string, unknown>): string {
   const id = getItemId(row, props.definition.idKey)
   return props.definition.detailRoute && id !== undefined ? `${props.definition.detailRoute}/${id}` : ''
+}
+
+function mediaUrl(value: unknown): string {
+  const source = String(value || '')
+  if (!source) return ''
+  if (/^https?:\/\//i.test(source)) return source
+
+  const baseUrl = String(config.public.apiBaseUrl || '').replace(/\/$/, '')
+  return `${baseUrl}/${source.replace(/^\//, '')}`
+}
+
+function imageCellUrl(row: Record<string, unknown>, key: string): string {
+  const value =
+    getResourceValue(row, `${key}_url`) ??
+    getResourceValue(row, `${key}Url`) ??
+    getResourceValue(row, `${key}.url`) ??
+    getResourceValue(row, key)
+  const path = pickMediaPath(value)
+
+  return path ? mediaUrl(path) : ''
+}
+
+function mediaTitleIconUrl(row: Record<string, unknown>): string {
+  return imageCellUrl(row, 'icon') || imageCellUrl(row, 'image') || imageCellUrl(row, 'thumbnail')
+}
+
+function booleanCellValue(row: Record<string, unknown>, key: string): unknown {
+  return getResourceValue(row, key)
+}
+
+function normalizedBooleanCellValue(row: Record<string, unknown>, key: string): boolean {
+  const value = booleanCellValue(row, key)
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase()
+    if (['true', '1', 'yes', 'active'].includes(normalized)) return true
+    if (['false', '0', 'no', 'inactive'].includes(normalized)) return false
+  }
+
+  if (typeof value === 'number') return value > 0
+  return Boolean(value)
 }
 
 function openDelete(row: Record<string, unknown>) {
@@ -149,10 +191,22 @@ async function confirmDelete() {
             <tbody>
               <tr v-for="row in items" :key="String(getItemId(row, definition.idKey) || JSON.stringify(row))">
                 <td v-for="column in definition.columns" :key="column.key">
-                  <StatusBadge v-if="column.kind === 'status'" :value="getObjectValue(row, column.key)" />
-                  <PremiumBadge v-else-if="column.kind === 'premium'" :value="getObjectValue(row, column.key)" />
-                  <StatusBadge v-else-if="column.kind === 'boolean'" :value="Boolean(getObjectValue(row, column.key))" />
-                  <DateTimeCell v-else-if="column.kind === 'date'" :value="getObjectValue(row, column.key)" />
+                  <StatusBadge v-if="column.kind === 'status'" :value="getResourceValue(row, column.key)" />
+                  <PremiumBadge v-else-if="column.kind === 'premium'" :value="getResourceValue(row, column.key)" />
+                  <span v-else-if="column.kind === 'mediaTitle'" class="table-media-title">
+                    <span class="table-media-thumb">
+                      <img v-if="mediaTitleIconUrl(row)" :src="mediaTitleIconUrl(row)" alt="">
+                      <AppIcon v-else name="i-lucide-image" />
+                    </span>
+                    <strong>{{ formatCellValue(row, column) || '—' }}</strong>
+                  </span>
+                  <StatusBadge v-else-if="column.kind === 'boolean' && booleanCellValue(row, column.key) !== undefined" :value="normalizedBooleanCellValue(row, column.key)" />
+                  <span v-else-if="column.kind === 'boolean'">—</span>
+                  <DateTimeCell v-else-if="column.kind === 'date'" :value="getResourceValue(row, column.key)" />
+                  <span v-else-if="column.kind === 'image'" class="table-image-cell">
+                    <img v-if="imageCellUrl(row, column.key)" :src="imageCellUrl(row, column.key)" alt="">
+                    <span v-else class="table-image-fallback"><AppIcon name="i-lucide-image" /></span>
+                  </span>
                   <span v-else>{{ formatCellValue(row, column) || '—' }}</span>
                 </td>
                 <td>

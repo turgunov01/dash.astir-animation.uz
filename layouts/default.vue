@@ -54,7 +54,7 @@ function toggleTheme() {
       <header class="topbar">
         <div>
           <div class="breadcrumbs">
-            <NuxtLink to="/">Dashboard</NuxtLink>
+            <NuxtLink to="/">Дашбоард</NuxtLink>
             <template v-for="part in breadcrumbs" :key="part">
               <span>/</span>
               <span style="text-transform: capitalize;">{{ part }}</span>

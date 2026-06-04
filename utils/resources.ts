@@ -21,6 +21,20 @@ const localizedTitleDescription: ResourceField[] = [
   { key: 'description', label: 'Описание', type: 'localized', rows: 4 }
 ]
 
+const categoryFields: ResourceField[] = [
+  ...localizedTitleDescription,
+  { key: 'type', label: 'Тип', type: 'text', placeholder: 'cartoon' },
+  { key: 'slug', label: 'Slug', type: 'text', placeholder: 'cartoons' },
+  { key: 'active', label: 'Активна', type: 'checkbox', defaultValue: true },
+  { key: 'icon', label: 'Иконка категории', type: 'file', accept: 'image/*', placeholder: 'Выберите иконку' }
+]
+
+const tagFields: ResourceField[] = [
+  { key: 'name', label: 'Название', type: 'text', required: true },
+  { key: 'slug', label: 'Slug', type: 'text', placeholder: 'cartoons' },
+  { key: 'active', label: 'Активен', type: 'checkbox', defaultValue: true }
+]
+
 const userFields: ResourceField[] = [
   { key: 'email', label: 'Email', type: 'email', required: true },
   { key: 'name', label: 'Имя', type: 'text' },
@@ -59,9 +73,8 @@ const permissionFields: ResourceField[] = [
 
 const movieFields: ResourceField[] = [
   ...localizedTitleDescription,
-  { key: 'series', label: 'Series', type: 'select' },
   { key: 'is_premium', label: 'Премиум', type: 'checkbox' },
-  { key: 'source', label: 'Источник', type: 'text' },
+  { key: 'source', label: 'Видео', type: 'text', send: false },
   // { key: 'transcode_status', label: 'Статус транскодинга', type: 'text' }
 ]
 
@@ -272,12 +285,52 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
     createRoute: '/content/categories/create',
     detailRoute: '/content/categories',
     columns: [
-      { key: 'id', label: 'ID' },
+      { key: 'icon', label: 'Иконка', kind: 'image' },
       { key: 'title', label: 'Название', kind: 'localized' },
-      { key: 'description', label: 'Описание', kind: 'localized' },
-      { key: 'createdAt', label: 'Создана', kind: 'date' }
+      { key: 'type', label: 'Тип' },
+      { key: 'slug', label: 'Slug' }
     ],
-    formFields: localizedTitleDescription
+    formFields: categoryFields,
+    createSubmit: {
+      forceMultipart: true,
+      metadataKey: 'metadata',
+      metadataFields: ['title', 'description', 'type', 'slug', 'active']
+    },
+    updateSubmit: {
+      forceMultipart: true,
+      metadataKey: 'metadata',
+      metadataFields: ['title', 'description', 'type', 'slug', 'active']
+    }
+  },
+  tags: {
+    key: 'tags',
+    title: 'Теги',
+    description: 'Теги нового /v1 content API. Используются для привязки к фильмам через tag_ids или free-form tags.',
+    listEndpoint: '/v1/content/tags',
+    detailEndpoint: '/v1/content/tags/{id}',
+    createEndpoint: '/v1/content/tags/create',
+    updateEndpoint: '/v1/content/tags/{id}',
+    updateMethod: 'PATCH',
+    deleteEndpoint: '/v1/content/tags/{id}',
+    createRoute: '/content/tags/create',
+    detailRoute: '/content/tags',
+    columns: [
+      { key: 'name', label: 'Название' },
+      { key: 'slug', label: 'Slug' },
+      { key: 'active', label: 'Активен', kind: 'boolean' }
+    ],
+    filters: [
+      {
+        key: 'active',
+        label: 'Статус',
+        type: 'select',
+        options: [
+          { label: 'Активные', value: true },
+          { label: 'Неактивные', value: false }
+        ]
+      }
+    ],
+    formFields: tagFields
   },
   series: {
     key: 'series',
@@ -298,15 +351,7 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
       { key: 'createdAt', label: 'Создан', kind: 'date' }
     ],
     formFields: seriesFields,
-    related: [{ title: 'Эпизоды', endpoint: '/api/v1/series/{id}/episodes' }],
-    tools: [
-      {
-        title: 'Загрузить постер',
-        endpoint: '/api/v1/series/{id}/poster',
-        method: 'POST',
-        fields: [{ key: 'poster', label: 'Файл постера', type: 'file', accept: 'image/*', required: true }]
-      }
-    ]
+    related: [{ title: 'Эпизоды', endpoint: '/api/v1/series/{id}/episodes' }]
   },
   tariffs: {
     key: 'tariffs',
@@ -461,40 +506,48 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
 }
 
 export const navigation = [
-  { label: 'Overview', to: '/', icon: 'i-lucide-layout-dashboard' },
-  { label: 'Users', to: '/users', icon: 'i-lucide-users' },
-  { label: 'Children', to: '/children', icon: 'i-lucide-baby' },
+  { label: 'Дашбоард', to: '/', icon: 'i-lucide-layout-dashboard' },
   {
-    label: 'Devices and pairing',
+    label: 'Пользователи',
+    icon: 'i-lucide-users',
+    children: [
+      { label: 'Родители', to: '/users', icon: 'i-lucide-users' },
+      { label: 'Дети', to: '/children', icon: 'i-lucide-baby' }
+    ]
+  },
+  {
+    label: 'Устройства',
     icon: 'i-lucide-monitor-smartphone',
     children: [
-      { label: 'TV devices', to: '/devices/tv', icon: 'i-lucide-tv' },
-      { label: 'Pairing QA', to: '/pairing', icon: 'i-lucide-qr-code' }
+      { label: 'TV устройства', to: '/devices/tv', icon: 'i-lucide-tv' },
+      { label: 'Симулятор', to: '/pairing', icon: 'i-lucide-qr-code' }
     ]
   },
   {
-    label: 'Content',
+    label: 'Контент',
     icon: 'i-lucide-film',
     children: [
-      { label: 'Movies', to: '/content/movies', icon: 'i-lucide-clapperboard' },
-      { label: 'Series', to: '/content/series', icon: 'i-lucide-panels-top-left' },
-      { label: 'Categories', to: '/content/categories', icon: 'i-lucide-tags' }
+      { label: 'Фильмы', to: '/content/movies', icon: 'i-lucide-clapperboard' },
+      { label: 'Сериалы', to: '/content/series', icon: 'i-lucide-panels-top-left' },
+      { label: 'Категории', to: '/content/categories', icon: 'i-lucide-tags' },
+      { label: 'Теги', to: '/content/tags', icon: 'i-lucide-tag' }
     ]
   },
-  { label: 'Tariffs', to: '/tariffs', icon: 'i-lucide-badge-dollar-sign' },
-  { label: 'Subscriptions', to: '/subscriptions', icon: 'i-lucide-refresh-cw' },
+  { label: 'Тарифы', to: '/tariffs', icon: 'i-lucide-badge-dollar-sign' },
+  { label: 'Подписки', to: '/subscriptions', icon: 'i-lucide-refresh-cw' },
   {
-    label: 'Billing and cards',
+    label: 'Платежи',
     icon: 'i-lucide-credit-card',
     children: [
-      { label: 'Transactions', to: '/billing/transactions', icon: 'i-lucide-receipt' },
-      { label: 'Checkout tools', to: '/billing/checkout-tools', icon: 'i-lucide-wrench' },
-      { label: 'Cards', to: '/cards', icon: 'i-lucide-credit-card' },
-      { label: 'Admin cards', to: '/admin/cards', icon: 'i-lucide-shield-check' }
+      { label: 'Транзакции', to: '/billing/transactions', icon: 'i-lucide-receipt' },
+      { label: 'Интеграции', to: '/billing/checkout-tools', icon: 'i-lucide-wrench' },
+      { label: 'Банковские карты', to: '/cards', icon: 'i-lucide-credit-card' },
+      { label: 'Админ карты', to: '/admin/cards', icon: 'i-lucide-shield-check' }
     ]
   },
-  { label: 'Watch sessions', to: '/watch-sessions', icon: 'i-lucide-clock-3' },
-  { label: 'Support chats', to: '/support/chats', icon: 'i-lucide-message-square' },
+  { label: 'Сессия просмотра', to: '/watch-sessions', icon: 'i-lucide-clock-3' },
+  { label: 'Чаты', to: '/support/chats', icon: 'i-lucide-message-square' },
+  { label: 'Отладка API', to: '/debug/api', icon: 'i-lucide-bug' },
   { label: 'FAQs', to: '/faqs', icon: 'i-lucide-circle-help' },
   { label: 'Settings', to: '/settings', icon: 'i-lucide-settings' }
 ]

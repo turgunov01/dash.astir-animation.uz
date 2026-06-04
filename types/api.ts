@@ -52,6 +52,12 @@ export interface ResourceField {
   send?: boolean
 }
 
+export interface ResourceSubmitConfig {
+  forceMultipart?: boolean
+  metadataKey?: string
+  metadataFields?: string[]
+}
+
 export type ColumnKind =
   | 'text'
   | 'localized'
@@ -59,8 +65,10 @@ export type ColumnKind =
   | 'date'
   | 'status'
   | 'premium'
+  | 'mediaTitle'
   | 'number'
   | 'money'
+  | 'image'
   | 'json'
 
 export interface ResourceColumn {
@@ -109,6 +117,8 @@ export interface ResourceDefinition {
   columns: ResourceColumn[]
   filters?: ResourceFilter[]
   formFields?: ResourceField[]
+  createSubmit?: ResourceSubmitConfig
+  updateSubmit?: ResourceSubmitConfig
   related?: RelatedEndpointDefinition[]
   tools?: EndpointToolDefinition[]
   roles?: string[]

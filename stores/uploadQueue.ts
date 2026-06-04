@@ -146,6 +146,16 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
   }
 
   async function runTask(id: string, request: UploadRequest, attempt = 0): Promise<unknown> {
+    const apiDebug = process.client ? useApiDebugStore() : null
+    const debugId = apiDebug?.startRequest({
+      method: request.method || 'POST',
+      path: request.endpoint,
+      baseUrl: String(useRuntimeConfig().public.apiBaseUrl || ''),
+      body: request.body,
+      source: 'upload'
+    })
+    const startedAt = Date.now()
+
     updateTask(id, {
       status: 'uploading',
       progress: 0,
@@ -168,6 +178,12 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
         resultRoute: buildResultRoute(response.body, request.resultRouteBase),
         completedAt: Date.now()
       })
+      apiDebug?.finishRequest(debugId, {
+        status: 'success',
+        statusCode: response.status,
+        durationMs: Date.now() - startedAt,
+        response: response.body
+      })
       void deletePersistedUpload(id)
       return response.body
     } catch (error) {
@@ -175,7 +191,17 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
 
       if (uploadError.statusCode === 401 && attempt === 0) {
         const auth = useAuthStore()
-        if (await auth.refresh()) return runTask(id, request, attempt + 1)
+        if (await auth.refresh()) {
+          apiDebug?.finishRequest(debugId, {
+            status: 'error',
+            statusCode: uploadError.statusCode,
+            durationMs: Date.now() - startedAt,
+            response: uploadError.raw,
+            errorMessage: '401, повтор после refresh token',
+            errorCode: uploadError.code
+          })
+          return runTask(id, request, attempt + 1)
+        }
       }
 
       updateTask(id, {
@@ -187,6 +213,14 @@ export const useUploadQueueStore = defineStore('uploadQueue', () => {
       if (uploadError.code === 'cancelled' || (uploadError.statusCode && uploadError.statusCode < 500)) {
         void deletePersistedUpload(id)
       }
+      apiDebug?.finishRequest(debugId, {
+        status: 'error',
+        statusCode: uploadError.statusCode,
+        durationMs: Date.now() - startedAt,
+        response: uploadError.raw,
+        errorMessage: uploadError.message,
+        errorCode: uploadError.code
+      })
       throw uploadError
     } finally {
       activeRequests.delete(id)

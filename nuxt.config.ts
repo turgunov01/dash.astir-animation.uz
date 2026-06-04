@@ -9,7 +9,8 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
     public: {
-      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'https://test-api.astir-animation.uz'
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || 'https://test-api.astir-animation.uz',
+      apiLogsEndpoint: process.env.NUXT_PUBLIC_API_LOGS_ENDPOINT || '/api/v1/admin/logs'
     }
   },
   app: {

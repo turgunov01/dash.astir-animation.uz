@@ -18,51 +18,21 @@ const uploadQueue = useUploadQueueStore()
 
 const title = ref<LocalizedText>({ uz: '', ru: '', en: '' })
 const description = ref<LocalizedText>({ uz: '', ru: '', en: '' })
-const category = ref('')
-const year = ref(new Date().getFullYear())
-const age = ref(0)
-const duration = ref(0)
-const selectedSeries = ref('')
-const published = ref(true)
-const tags = ref<string[]>([])
+const isPremium = ref(false)
+const seriesKind = ref<'seasons' | 'episodes'>('seasons')
+const seriesActive = ref(true)
+const selectedTagIds = ref<string[]>([])
+const freeFormTags = ref<string[]>([])
 const poster = ref<File | null>(null)
 const video = ref<File | null>(null)
 const posterInput = ref<HTMLInputElement | null>(null)
 const videoInput = ref<HTMLInputElement | null>(null)
 const loading = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
-const seriesOptions = ref<Array<{ label: string; value: string | number }>>([])
 
 const locales = ['uz', 'ru', 'en'] as const
-const tagOptions = [
-  'Для взрослых',
-  'Приключения',
-  'Анимация',
-  'Комедия',
-  'Чёрный юмор',
-  'Демоны',
-  'Для детей',
-  'Мультивселенная',
-  'Русский',
-  'Научная фантастика',
-  'Фантастика',
-  'Короткометражка'
-]
-const categories = [
-  { label: '— выберите —', value: '' },
-  { label: 'Анимация', value: 'animation' },
-  { label: 'Приключения', value: 'adventure' },
-  { label: 'Комедия', value: 'comedy' },
-  { label: 'Фантастика', value: 'fantasy' }
-]
-
 const posterPreview = computed(() => (poster.value && process.client ? URL.createObjectURL(poster.value) : ''))
-
-onMounted(loadSeriesOptions)
-
-function toggleTag(tag: string) {
-  tags.value = tags.value.includes(tag) ? tags.value.filter((item) => item !== tag) : [...tags.value, tag]
-}
+const pageTitle = computed(() => (props.contentType === 'series' ? 'Новый сериал' : 'Новый фильм'))
 
 async function submit() {
   error.value = null
@@ -75,12 +45,30 @@ async function submit() {
   loading.value = true
 
   try {
-    const body = new FormData()
-    body.append('metadata', JSON.stringify(buildMetadata()))
-    if (poster.value) body.append('poster', poster.value)
-    if (video.value) body.append('video', video.value)
+    if (props.contentType === 'series') {
+      const result = await api.post(props.definition.createEndpoint || '', buildSeriesBody())
+      const id = getCreatedId(result)
+
+      if (id !== undefined && poster.value) {
+        const posterBody = new FormData()
+        posterBody.append('file', poster.value)
+        uploadQueue.enqueue({
+          endpoint: resolveEndpoint('/api/v1/series/{id}/poster', { id }),
+          method: 'POST',
+          body: posterBody,
+          label: `Постер: ${poster.value.name}`,
+          resultRouteBase: props.definition.detailRoute
+        })
+      }
+
+      await router.push(id && props.definition.detailRoute ? `${props.definition.detailRoute}/${id}` : props.backTo)
+      return
+    }
 
     if (video.value) {
+      const body = new FormData()
+      body.append('metadata', JSON.stringify(buildMovieMetadata()))
+      body.append('video', video.value)
       uploadQueue.enqueue({
         endpoint: props.definition.createEndpoint || '',
         method: 'POST',
@@ -92,7 +80,7 @@ async function submit() {
       return
     }
 
-    const result = await api.post(props.definition.createEndpoint || '', body)
+    const result = await api.post(props.definition.createEndpoint || '', buildMovieMetadata())
     const id = getCreatedId(result)
     await router.push(id && props.definition.detailRoute ? `${props.definition.detailRoute}/${id}` : props.backTo)
   } catch (requestError) {
@@ -102,19 +90,22 @@ async function submit() {
   }
 }
 
-function buildMetadata() {
+function buildSeriesBody() {
   return {
     title: title.value,
     description: description.value,
-    category: category.value || undefined,
-    year: Number(year.value) || undefined,
-    age: Number(age.value) || 0,
-    duration: Number(duration.value) || 0,
-    duration_seconds: Number(duration.value) || 0,
-    is_published: published.value,
-    published: published.value,
-    series: selectedSeries.value ? [selectedSeries.value] : [],
-    tags: tags.value
+    kind: seriesKind.value,
+    active: seriesActive.value
+  }
+}
+
+function buildMovieMetadata() {
+  return {
+    title: title.value,
+    description: description.value,
+    is_premium: isPremium.value,
+    tag_ids: selectedTagIds.value,
+    tags: freeFormTags.value
   }
 }
 
@@ -122,29 +113,13 @@ function getCreatedId(payload: unknown) {
   const data = unwrapPayload<Record<string, unknown>>(payload)
   return getItemId(data) || getItemId(data?.movie) || getItemId(data?.content) || getItemId(data?.series)
 }
-
-async function loadSeriesOptions() {
-  if (props.contentType !== 'movie') return
-
-  try {
-    const response = await api.get('/api/v1/series', { limit: 100 })
-    seriesOptions.value = normalizeList(response).items
-      .map((item) => {
-        const id = getItemId(item)
-        return id === undefined ? null : { label: pickLocalized(getObjectValue(item, 'title')) || String(id), value: id }
-      })
-      .filter((item): item is { label: string; value: string | number } => Boolean(item))
-  } catch {
-    seriesOptions.value = []
-  }
-}
 </script>
 
 <template>
   <section class="modal-page">
     <form class="content-modal" @submit.prevent="submit">
       <div class="content-modal-header">
-        <h1>Новый контент</h1>
+        <h1>{{ pageTitle }}</h1>
         <NuxtLink class="modal-close" :to="backTo" aria-label="Закрыть">
           <AppIcon name="i-lucide-x" />
         </NuxtLink>
@@ -154,21 +129,23 @@ async function loadSeriesOptions() {
 
       <div class="content-form-layout">
         <aside class="poster-column">
-          <span class="content-field-label">Постер</span>
-          <button class="poster-preview" type="button" @click="posterInput?.click()">
-            <img v-if="posterPreview" :src="posterPreview" alt="">
-            <span v-else>
-              <AppIcon name="i-lucide-image" />
-              Нет постера
-            </span>
-          </button>
-          <input ref="posterInput" hidden type="file" accept="image/*" @change="poster = ($event.target as HTMLInputElement).files?.[0] || null">
-          <button class="button secondary poster-upload" type="button" @click="posterInput?.click()">
-            <AppIcon name="i-lucide-upload-cloud" />
-            Загрузить постер
-          </button>
+          <template v-if="contentType === 'series'">
+            <span class="content-field-label">Постер</span>
+            <button class="poster-preview" type="button" @click="posterInput?.click()">
+              <img v-if="posterPreview" :src="posterPreview" alt="">
+              <span v-else>
+                <AppIcon name="i-lucide-image" />
+                Нет постера
+              </span>
+            </button>
+            <input ref="posterInput" hidden type="file" accept="image/*" @change="poster = ($event.target as HTMLInputElement).files?.[0] || null">
+            <button class="button secondary poster-upload" type="button" @click="posterInput?.click()">
+              <AppIcon name="i-lucide-upload-cloud" />
+              Загрузить постер
+            </button>
+          </template>
           <input ref="videoInput" hidden type="file" accept="video/*" @change="video = ($event.target as HTMLInputElement).files?.[0] || null">
-          <button class="button secondary poster-upload" type="button" @click="videoInput?.click()">
+          <button v-if="contentType === 'movie'" class="button secondary poster-upload" type="button" @click="videoInput?.click()">
             <AppIcon name="i-lucide-file-video" />
             {{ video ? video.name : 'Загрузить видео' }}
           </button>
@@ -186,13 +163,6 @@ async function loadSeriesOptions() {
             </label>
           </div>
 
-          <label class="field">
-            <span class="content-field-label">Категория</span>
-            <select v-model="category" class="select">
-              <option v-for="option in categories" :key="option.value" :value="option.value">{{ option.label }}</option>
-            </select>
-          </label>
-
           <div class="localized-block">
             <div class="content-field-head">
               <span class="content-field-label">Описание</span>
@@ -204,50 +174,32 @@ async function loadSeriesOptions() {
             </label>
           </div>
 
-          <div class="content-number-grid">
+          <label v-if="contentType === 'movie'" class="switch-row">
+            <input v-model="isPremium" type="checkbox">
+            <span>Премиум</span>
+          </label>
+
+          <div v-if="contentType === 'series'" class="content-number-grid">
             <label class="field">
-              <span class="content-field-label">Год</span>
-              <input v-model.number="year" class="input" type="number">
+              <span class="content-field-label">Тип сериала</span>
+              <select v-model="seriesKind" class="select">
+                <option value="seasons">Сезоны</option>
+                <option value="episodes">Эпизоды</option>
+              </select>
             </label>
-            <label class="field">
-              <span class="content-field-label">Возраст</span>
-              <input v-model.number="age" class="input" type="number" min="0">
-            </label>
-            <label class="field">
-              <span class="content-field-label">Длительность (с)</span>
-              <input v-model.number="duration" class="input" type="number" min="0">
+            <label class="switch-row">
+              <input v-model="seriesActive" type="checkbox">
+              <span>Активен</span>
             </label>
           </div>
 
-          <label class="switch-row">
-            <input v-model="published" type="checkbox">
-            <span>Опубликовано</span>
-          </label>
-
-          <label class="field">
-            <span class="content-field-label">Сериал</span>
-            <select v-model="selectedSeries" class="select">
-              <option value="">Без сериала</option>
-              <option v-for="option in seriesOptions" :key="String(option.value)" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
-          </label>
-
-          <div class="field">
+          <div v-if="contentType === 'movie'" class="field">
             <span class="content-field-label">Теги</span>
-            <div class="tag-list">
-              <button
-                v-for="tag in tagOptions"
-                :key="tag"
-                class="tag-chip"
-                :class="{ active: tags.includes(tag) }"
-                type="button"
-                @click="toggleTag(tag)"
-              >
-                {{ tag }}
-              </button>
-            </div>
+            <ContentTagSelector
+              v-model:selected-tag-ids="selectedTagIds"
+              v-model:free-form-tags="freeFormTags"
+              :disabled="loading"
+            />
           </div>
 
           <div class="content-modal-actions">

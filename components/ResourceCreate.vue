@@ -38,6 +38,9 @@ async function onSuccess(response: unknown) {
           :background-redirect-to="backTo"
           :background-label="`Создание: ${definition.title}`"
           :background-result-route-base="definition.detailRoute || ''"
+          :force-multipart="definition.createSubmit?.forceMultipart || false"
+          :metadata-key="definition.createSubmit?.metadataKey || 'metadata'"
+          :metadata-fields="definition.createSubmit?.metadataFields || []"
           @success="onSuccess"
         />
       </div>

@@ -15,6 +15,9 @@ const props = withDefaults(
     backgroundRedirectTo?: string
     backgroundLabel?: string
     backgroundResultRouteBase?: string
+    forceMultipart?: boolean
+    metadataKey?: string
+    metadataFields?: string[]
   }>(),
   {
     fields: () => [],
@@ -26,7 +29,10 @@ const props = withDefaults(
     backgroundUploads: true,
     backgroundRedirectTo: '',
     backgroundLabel: '',
-    backgroundResultRouteBase: ''
+    backgroundResultRouteBase: '',
+    forceMultipart: false,
+    metadataKey: 'metadata',
+    metadataFields: () => []
   }
 )
 
@@ -47,7 +53,7 @@ watch(
   () => [props.fields, props.initialValue],
   () => {
     for (const field of props.fields) {
-      const existing = props.initialValue ? getObjectValue(props.initialValue, field.key) : undefined
+      const existing = props.initialValue ? getResourceValue(props.initialValue, field.key) : undefined
       if (existing !== undefined) {
         model[field.key] =
           field.key === 'series'
@@ -142,14 +148,27 @@ function buildSchema() {
 
 function buildBody(): Record<string, unknown> | FormData {
   const bodyFields = props.fields.filter((field) => field.send !== false && !props.pathParams.includes(field.key))
-  const hasFile = bodyFields.some((field) => field.type === 'file' && model[field.key])
+  const hasFile = bodyFields.some((field) => field.type === 'file' && isFileValue(model[field.key]))
+  const metadataFieldKeys = new Set(props.metadataFields)
 
-  if (hasFile) {
+  if (props.forceMultipart || hasFile) {
     const formData = new FormData()
+
+    if (shouldAppendMetadata(bodyFields, metadataFieldKeys)) {
+      const metadata = Object.fromEntries(
+        bodyFields
+          .filter((field) => metadataFieldKeys.has(field.key))
+          .map((field) => [field.key, parseFieldValue(field)] as const)
+          .filter(([, value]) => value !== undefined && value !== '')
+      )
+      formData.append(props.metadataKey, JSON.stringify(metadata))
+    }
+
     for (const field of bodyFields) {
+      if (metadataFieldKeys.has(field.key)) continue
       const value = parseFieldValue(field)
       if (value === undefined || value === null || value === '') continue
-      if (value instanceof File) {
+      if (isFileValue(value)) {
         formData.append(field.key, value)
       } else if (typeof value === 'object') {
         formData.append(field.key, JSON.stringify(value))
@@ -167,8 +186,59 @@ function buildBody(): Record<string, unknown> | FormData {
   )
 }
 
+function shouldAppendMetadata(bodyFields: ResourceField[], metadataFieldKeys: Set<string>): boolean {
+  if (!metadataFieldKeys.size) return false
+  if (props.method === 'POST') return true
+
+  return bodyFields.some((field) => metadataFieldKeys.has(field.key) && fieldValueChanged(field))
+}
+
+function fieldValueChanged(field: ResourceField): boolean {
+  const current = comparableValue(parseFieldValue(field))
+  const initial = comparableValue(initialFieldValue(field))
+  return current !== initial
+}
+
+function initialFieldValue(field: ResourceField): unknown {
+  const value = props.initialValue ? getResourceValue(props.initialValue, field.key) : undefined
+
+  if (field.type === 'file') return undefined
+  if (field.key === 'series') return normalizeSeriesValue(value)
+  if (field.type === 'json' && typeof value === 'object') return value
+
+  return value
+}
+
+function comparableValue(value: unknown): string {
+  return JSON.stringify(normalizeComparableValue(value) ?? null)
+}
+
+function normalizeComparableValue(value: unknown): unknown {
+  if (value === undefined || value === null || value === '') return undefined
+
+  if (Array.isArray(value)) {
+    const items = value.map(normalizeComparableValue).filter((item) => item !== undefined)
+    return items.length ? items : undefined
+  }
+
+  if (typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .map(([key, entry]) => [key, normalizeComparableValue(entry)] as const)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right))
+
+    return entries.length ? Object.fromEntries(entries) : undefined
+  }
+
+  return value
+}
+
 function parseFieldValue(field: ResourceField): unknown {
   const value = model[field.key]
+
+  if (field.type === 'file') {
+    return isFileValue(value) ? value : undefined
+  }
 
   if (field.key === 'series') {
     return value ? [value] : []
@@ -185,10 +255,14 @@ function parseFieldValue(field: ResourceField): unknown {
   return value
 }
 
+function isFileValue(value: unknown): value is File {
+  return typeof File !== 'undefined' && value instanceof File
+}
+
 function formDataHasFile(body: FormData): boolean {
   let hasFile = false
   body.forEach((value) => {
-    if (typeof File !== 'undefined' && value instanceof File) hasFile = true
+    if (isFileValue(value)) hasFile = true
   })
   return hasFile
 }
@@ -196,13 +270,13 @@ function formDataHasFile(body: FormData): boolean {
 function buildUploadLabel(body: FormData, endpoint: string): string {
   const files: string[] = []
   body.forEach((value) => {
-    if (typeof File !== 'undefined' && value instanceof File) files.push(value.name)
+    if (isFileValue(value)) files.push(value.name)
   })
   return files.length ? `Загрузка: ${files.join(', ')}` : `Загрузка: ${endpoint}`
 }
 
 function hasFieldValue(value: unknown): boolean {
-  if (value instanceof File) return true
+  if (isFileValue(value)) return true
   if (typeof value === 'boolean') return true
   if (typeof value === 'number') return Number.isFinite(value)
   if (typeof value === 'string') return value.trim().length > 0
@@ -219,20 +293,23 @@ function setStringFieldValue(key: string, value: string) {
   model[key] = value
 }
 
-function shouldRenderReadySource(field: ResourceField): boolean {
-  if (field.key !== 'source') return false
-  const source = model[field.key]
-  if (typeof source !== 'string' || !source.trim()) return false
+function isMediaSourceField(field: ResourceField): boolean {
+  return ['source', 'video_url', 'videoUrl'].includes(field.key)
+}
 
-  const status = String(
-    getObjectValue(props.initialValue, 'transcode_status') ||
-      getObjectValue(props.initialValue, 'transcodeStatus') ||
-      model.transcode_status ||
-      model.transcodeStatus ||
-      ''
-  ).toLowerCase()
+function currentMediaSourceUrl(field: ResourceField): string {
+  if (!isMediaSourceField(field)) return ''
 
-  return status === 'ready'
+  const value =
+    getResourceValue(props.initialValue, field.key) ??
+    getResourceValue(props.initialValue, 'video_url') ??
+    getResourceValue(props.initialValue, 'videoUrl') ??
+    getResourceValue(props.initialValue, 'playback.auto_url') ??
+    getResourceValue(props.initialValue, 'playback.hls_url') ??
+    model[field.key]
+  const path = pickMediaPath(value)
+
+  return path ? mediaUrl(path) : ''
 }
 
 function mediaUrl(value: unknown): string {
@@ -244,10 +321,23 @@ function mediaUrl(value: unknown): string {
   return `${baseUrl}/${source.replace(/^\//, '')}`
 }
 
+function currentFileUrl(field: ResourceField): string {
+  const value =
+    field.key === 'icon'
+      ? getResourceValue(props.initialValue, 'icon_url') ??
+        getResourceValue(props.initialValue, 'iconUrl') ??
+        getResourceValue(props.initialValue, 'icon.url') ??
+        getResourceValue(props.initialValue, field.key)
+      : getResourceValue(props.initialValue, field.key)
+  const path = pickMediaPath(value)
+
+  return path ? mediaUrl(path) : ''
+}
+
 async function loadSeriesOptions() {
   try {
     const response = await api.get('/api/v1/series', { limit: 100 })
-    seriesOptions.value = normalizeList(response).items
+    seriesOptions.value = normalizeList(response, 'series').items
       .map((item) => {
         const id = getItemId(item)
         return id === undefined ? null : { label: pickLocalized(getObjectValue(item, 'title')) || String(id), value: id }
@@ -293,9 +383,15 @@ function normalizeSeriesValue(value: unknown): string | number | '' {
         <small v-if="field.help" style="color: var(--muted);">{{ field.help }}</small>
       </div>
 
-      <div v-else-if="field.type === 'file'" class="field">
+      <div v-else-if="field.type === 'file'" :id="`field-${field.key}`" class="field">
         <span class="field-label">{{ field.label }}</span>
         <UploadDropzone v-model="model[field.key]" :accept="field.accept || ''" :label="field.placeholder || 'Выберите файл'" />
+        <div v-if="currentFileUrl(field)" class="file-preview-row">
+          <img v-if="field.accept?.startsWith('image/')" class="file-preview-image" :src="currentFileUrl(field)" alt="">
+          <a :href="currentFileUrl(field)" target="_blank" rel="noreferrer">
+            {{ field.key === 'icon' ? 'Текущая иконка' : 'Текущий файл' }}
+          </a>
+        </div>
         <small v-if="field.help" style="color: var(--muted);">{{ field.help }}</small>
       </div>
 
@@ -314,14 +410,17 @@ function normalizeSeriesValue(value: unknown): string | number | '' {
           </option>
         </select>
         <video
-          v-else-if="shouldRenderReadySource(field)"
+          v-else-if="currentMediaSourceUrl(field)"
           class="media-source-player"
-          :src="mediaUrl(model[field.key])"
+          :src="currentMediaSourceUrl(field)"
           controls
           preload="metadata"
         >
           Ваш браузер не поддерживает видео.
         </video>
+        <div v-else-if="isMediaSourceField(field)" class="media-source-empty">
+          Видео не загружено
+        </div>
         <textarea
           v-else-if="field.type === 'textarea' || field.type === 'json'"
           :value="stringFieldValue(field.key)"
