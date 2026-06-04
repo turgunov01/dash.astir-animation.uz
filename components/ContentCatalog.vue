@@ -57,8 +57,11 @@ async function load() {
       tag_ids: selectedTags.value.join(',') || undefined
     })
     const normalized = normalizeList(response, props.definition.key)
-    items.value = normalized.items
-    total.value = normalized.total ?? normalized.items.length
+    const scopedItems = filterCatalogItems(normalized.items)
+    items.value = scopedItems
+    total.value = scopedItems.length === normalized.items.length
+      ? normalized.total ?? normalized.items.length
+      : scopedItems.length
   } catch (requestError) {
     error.value = requestError as ApiErrorInfo
     items.value = []
@@ -112,6 +115,58 @@ function toTagOption(item: Record<string, unknown>): { id: string; label: string
     label: name || slug || String(id),
     slug
   }
+}
+
+function filterCatalogItems(rows: Record<string, unknown>[]) {
+  if (props.definition.key === 'series') {
+    return rows.filter((row) => !isMovieItem(row))
+  }
+
+  if (props.definition.key === 'movies') {
+    return rows.filter((row) => !isSeriesItem(row))
+  }
+
+  return rows
+}
+
+function isMovieItem(row: Record<string, unknown>) {
+  const contentType = normalizedContentType(row)
+  if (['movie', 'movies', 'film', 'films'].includes(contentType)) return true
+  if (['series', 'serial', 'tv_series', 'seasons', 'episodes'].includes(contentType)) return false
+
+  return Boolean(
+    getResourceValue(row, 'movie_id') ||
+    getResourceValue(row, 'source') ||
+    getResourceValue(row, 'video_url') ||
+    getResourceValue(row, 'videoUrl') ||
+    getResourceValue(row, 'transcode_status') ||
+    getResourceValue(row, 'playback') ||
+    getResourceValue(row, 'media.has_source')
+  )
+}
+
+function isSeriesItem(row: Record<string, unknown>) {
+  const contentType = normalizedContentType(row)
+  if (['series', 'serial', 'tv_series', 'seasons', 'episodes'].includes(contentType)) return true
+  if (['movie', 'movies', 'film', 'films'].includes(contentType)) return false
+
+  return Boolean(
+    getResourceValue(row, 'series_id') ||
+    getResourceValue(row, 'episodesCount') ||
+    getResourceValue(row, 'episodes_count') ||
+    getResourceValue(row, 'seasonsCount') ||
+    getResourceValue(row, 'seasons_count')
+  )
+}
+
+function normalizedContentType(row: Record<string, unknown>) {
+  return String(
+    getResourceValue(row, 'content_type') ||
+    getResourceValue(row, 'contentType') ||
+    getResourceValue(row, 'type') ||
+    getResourceValue(row, 'kind') ||
+    ''
+  ).trim().toLowerCase()
 }
 
 function rowKey(row: Record<string, unknown>) {
