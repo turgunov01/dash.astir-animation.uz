@@ -476,9 +476,10 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
         title: 'Ответить',
         endpoint: '/api/v1/admin/support/chats/{id}/messages',
         method: 'POST',
+        description: 'Текст и изображение отправляются как multipart/form-data.',
         fields: [
-          { key: 'message', label: 'Сообщение', type: 'textarea', required: true },
-          { key: 'attachmentPath', label: 'Attachment path', type: 'text' }
+          { key: 'body', label: 'Сообщение', type: 'textarea' },
+          { key: 'file', label: 'Изображение', type: 'file', accept: 'image/*', placeholder: 'Выберите изображение' }
         ]
       },
       {

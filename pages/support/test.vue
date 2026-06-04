@@ -10,9 +10,10 @@ const tools: EndpointToolDefinition[] = [
     title: 'Send support message',
     endpoint: '/api/v1/support/chat/messages',
     method: 'POST',
+    description: 'Отправка текста и изображения как multipart/form-data.',
     fields: [
-      { key: 'message', label: 'Сообщение', type: 'textarea', required: true },
-      { key: 'attachmentPath', label: 'Attachment path', type: 'text' }
+      { key: 'body', label: 'Сообщение', type: 'textarea' },
+      { key: 'file', label: 'Изображение', type: 'file', accept: 'image/*', placeholder: 'Выберите изображение' }
     ]
   },
   { title: 'Mark current chat read', endpoint: '/api/v1/support/chat/read', method: 'POST' }

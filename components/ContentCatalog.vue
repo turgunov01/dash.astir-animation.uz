@@ -238,61 +238,20 @@ function hiddenTagsOf(row: Record<string, unknown>) {
   return tagsOf(row).slice(visibleTagsLimit)
 }
 
-function normalizedStatusOf(row: Record<string, unknown>) {
-  return String(getObjectValue(row, 'transcode_status') ?? getObjectValue(row, 'status') ?? '').toLowerCase()
-}
-
-function publishedStateOf(row: Record<string, unknown>) {
-  const value = getObjectValue(row, 'published') ?? getObjectValue(row, 'is_published') ?? getObjectValue(row, 'active')
-  if (value === undefined || value === null || value === '') return undefined
-  if (typeof value === 'boolean') return value
-  if (typeof value === 'number') return value > 0
-
-  const normalized = String(value).toLowerCase()
-  if (['true', '1', 'yes', 'да', 'published', 'active'].includes(normalized)) return true
-  if (['false', '0', 'no', 'нет', 'draft', 'inactive', 'unpublished'].includes(normalized)) return false
-
-  return undefined
-}
-
-function isWaitingStatus(status: string) {
-  return ['pending', 'queued', 'waiting', 'uploaded'].includes(status)
-}
-
-function isProcessingStatus(status: string) {
-  return ['processing', 'in_progress', 'transcoding'].includes(status)
-}
-
-function isReadyStatus(status: string) {
-  return ['ready', 'done', 'completed', 'complete'].includes(status)
-}
-
-function isErrorStatus(status: string) {
-  return ['failed', 'fail', 'error', 'unavailable'].includes(status)
-}
-
-function isDraftStatus(status: string) {
-  return ['draft', 'new', 'created', 'inactive', 'unpublished', 'disabled'].includes(status)
-}
-
 function contentStatusOf(row: Record<string, unknown>) {
-  const status = normalizedStatusOf(row)
-
-  if (isErrorStatus(status)) return 'Ошибка'
-  if (isReadyStatus(status)) return 'Готово'
-  if (isProcessingStatus(status)) return 'Обработка'
-  if (isWaitingStatus(status)) return 'В очереди'
-  if (isDraftStatus(status) || publishedStateOf(row) === false) return 'Черновик'
-
-  return 'Опубликовано'
+  return transcodeStatusLabel(row)
 }
 
 function statusToneOf(row: Record<string, unknown>) {
-  const label = contentStatusOf(row)
-  if (label === 'Ошибка') return 'danger'
-  if (label === 'В очереди' || label === 'Обработка') return 'warning'
-  if (label === 'Черновик') return 'neutral'
-  return 'success'
+  return transcodeStatusTone(row)
+}
+
+function statusProgressVisible(row: Record<string, unknown>) {
+  return transcodeProgressVisible(row)
+}
+
+function statusProgressPercent(row: Record<string, unknown>) {
+  return transcodeProgressPercent(row) ?? 0
 }
 
 function ratingOf(row: Record<string, unknown>) {
@@ -306,10 +265,14 @@ function triggerFile(row: Record<string, unknown>) {
   fileInputs.value[rowKey(row)]?.click()
 }
 
+function canUploadFileFromCatalog() {
+  return false
+}
+
 function uploadFile(row: Record<string, unknown>, event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   const id = getItemId(row, props.definition.idKey)
-  if (!file || id === undefined || !props.definition.updateEndpoint) return
+  if (!canUploadFileFromCatalog() || !file || id === undefined || !props.definition.updateEndpoint) return
 
   const body = new FormData()
   body.append('video', file)
@@ -441,6 +404,9 @@ async function confirmDelete() {
             <td>{{ ratingOf(row) }}</td>
             <td>
               <span class="table-tag status-tag" :class="statusToneOf(row)">{{ contentStatusOf(row) }}</span>
+              <div v-if="statusProgressVisible(row)" class="thin-progress" :title="`${statusProgressPercent(row)}%`">
+                <span :style="{ width: `${statusProgressPercent(row)}%` }" />
+              </div>
             </td>
             <td>
               <div class="catalog-actions">
@@ -449,13 +415,14 @@ async function confirmDelete() {
                   Просмотр
                 </NuxtLink>
                 <input
+                  v-if="canUploadFileFromCatalog()"
                   :ref="(el) => { fileInputs[rowKey(row)] = el as HTMLInputElement | null }"
                   hidden
                   type="file"
                   accept="video/*"
                   @change="uploadFile(row, $event)"
                 >
-                <button class="button secondary small-action" type="button" @click="triggerFile(row)">
+                <button v-if="canUploadFileFromCatalog()" class="button secondary small-action" type="button" @click="triggerFile(row)">
                   <AppIcon name="i-lucide-upload-cloud" />
                   Загрузить файл
                 </button>

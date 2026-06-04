@@ -23,6 +23,10 @@ const posterPreview = computed(() => {
   return currentPosterUrl.value
 })
 const currentPosterUrl = computed(() => mediaUrl(moviePosterPath(props.movie)))
+const statusLabel = computed(() => transcodeStatusLabel(props.movie))
+const statusTone = computed(() => transcodeStatusTone(props.movie))
+const progressVisible = computed(() => transcodeProgressVisible(props.movie))
+const progressPercent = computed(() => transcodeProgressPercent(props.movie) ?? 0)
 
 async function uploadPoster() {
   if (!posterFile.value) {
@@ -142,6 +146,13 @@ function mediaUrl(value: unknown): string {
         </button>
 
         <div class="movie-media-actions">
+          <div class="movie-transcode-status">
+            <span class="table-tag status-tag" :class="statusTone">{{ statusLabel }}</span>
+            <div v-if="progressVisible" class="thin-progress" :title="`${progressPercent}%`">
+              <span :style="{ width: `${progressPercent}%` }" />
+            </div>
+          </div>
+
           <input
             ref="posterInput"
             hidden

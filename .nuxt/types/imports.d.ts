@@ -123,6 +123,11 @@ declare global {
   const toRef: typeof import('../../node_modules/vue').toRef
   const toRefs: typeof import('../../node_modules/vue').toRefs
   const toValue: typeof import('../../node_modules/vue').toValue
+  const transcodeProgressPercent: typeof import('../../utils/transcode').transcodeProgressPercent
+  const transcodeProgressVisible: typeof import('../../utils/transcode').transcodeProgressVisible
+  const transcodeStatusLabel: typeof import('../../utils/transcode').transcodeStatusLabel
+  const transcodeStatusTone: typeof import('../../utils/transcode').transcodeStatusTone
+  const transcodeStatusValue: typeof import('../../utils/transcode').transcodeStatusValue
   const triggerRef: typeof import('../../node_modules/vue').triggerRef
   const tryUseNuxtApp: typeof import('../../node_modules/nuxt/dist/app/nuxt').tryUseNuxtApp
   const unref: typeof import('../../node_modules/vue').unref
@@ -376,6 +381,11 @@ declare module 'vue' {
     readonly toRef: UnwrapRef<typeof import('../../node_modules/vue')['toRef']>
     readonly toRefs: UnwrapRef<typeof import('../../node_modules/vue')['toRefs']>
     readonly toValue: UnwrapRef<typeof import('../../node_modules/vue')['toValue']>
+    readonly transcodeProgressPercent: UnwrapRef<typeof import('../../utils/transcode')['transcodeProgressPercent']>
+    readonly transcodeProgressVisible: UnwrapRef<typeof import('../../utils/transcode')['transcodeProgressVisible']>
+    readonly transcodeStatusLabel: UnwrapRef<typeof import('../../utils/transcode')['transcodeStatusLabel']>
+    readonly transcodeStatusTone: UnwrapRef<typeof import('../../utils/transcode')['transcodeStatusTone']>
+    readonly transcodeStatusValue: UnwrapRef<typeof import('../../utils/transcode')['transcodeStatusValue']>
     readonly triggerRef: UnwrapRef<typeof import('../../node_modules/vue')['triggerRef']>
     readonly tryUseNuxtApp: UnwrapRef<typeof import('../../node_modules/nuxt/dist/app/nuxt')['tryUseNuxtApp']>
     readonly unref: UnwrapRef<typeof import('../../node_modules/vue')['unref']>

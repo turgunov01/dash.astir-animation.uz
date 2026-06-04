@@ -11,6 +11,7 @@ const props = withDefaults(
 )
 
 const api = useApi()
+const config = useRuntimeConfig()
 
 const chats = ref<Record<string, unknown>[]>([])
 const selectedChatId = ref('')
@@ -18,12 +19,16 @@ const selectedChatDetail = ref<Record<string, unknown> | null>(null)
 const messages = ref<Record<string, unknown>[]>([])
 const search = ref('')
 const replyText = ref('')
+const attachmentInput = ref<HTMLInputElement | null>(null)
+const attachmentFile = ref<File | null>(null)
+const attachmentPreviewUrl = ref('')
 const loadingChats = ref(false)
 const loadingMessages = ref(false)
 const sending = ref(false)
 const markingRead = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
 const messagesPane = ref<HTMLElement | null>(null)
+const canSendReply = computed(() => Boolean(replyText.value.trim() || attachmentFile.value) && !sending.value)
 
 const filteredChats = computed(() => {
   const query = search.value.trim().toLowerCase()
@@ -69,6 +74,17 @@ watch(
     if (nextId && nextId !== selectedChatId.value) await selectChat(nextId)
   }
 )
+
+watch(attachmentFile, (file) => {
+  revokeAttachmentPreview()
+  if (file && process.client && isImageFile(file)) {
+    attachmentPreviewUrl.value = URL.createObjectURL(file)
+  }
+})
+
+onBeforeUnmount(() => {
+  revokeAttachmentPreview()
+})
 
 async function loadChats() {
   loadingChats.value = true
@@ -125,23 +141,57 @@ async function refreshCurrentChat() {
 
 async function sendMessage() {
   const message = replyText.value.trim()
-  if (!message || !selectedChatId.value || sending.value) return
+  if ((!message && !attachmentFile.value) || !selectedChatId.value || sending.value) return
 
   sending.value = true
   error.value = null
 
   try {
-    const body = new FormData()
-    body.append('body', message)
+    const endpoint = `/api/v1/admin/support/chats/${encodeURIComponent(selectedChatId.value)}/messages`
 
-    await api.post(`/api/v1/admin/support/chats/${encodeURIComponent(selectedChatId.value)}/messages`, body)
+    try {
+      await api.post(endpoint, buildMessageBody('file'))
+    } catch (requestError) {
+      if (!shouldRetryLegacyAttachmentField(requestError)) throw requestError
+      await api.post(endpoint, buildMessageBody('attachment'))
+    }
+
     replyText.value = ''
+    clearAttachment()
     await refreshCurrentChat()
   } catch (requestError) {
     error.value = requestError as ApiErrorInfo
   } finally {
     sending.value = false
   }
+}
+
+function buildMessageBody(fileField: 'file' | 'attachment') {
+  const body = new FormData()
+  body.append('body', replyText.value.trim())
+  if (attachmentFile.value) body.append(fileField, attachmentFile.value)
+  return body
+}
+
+function shouldRetryLegacyAttachmentField(error: unknown): boolean {
+  if (!attachmentFile.value) return false
+
+  const statusCode = (error as ApiErrorInfo).statusCode
+  return statusCode === 400 || statusCode === 415 || statusCode === 422
+}
+
+function selectAttachment(event: Event) {
+  attachmentFile.value = (event.target as HTMLInputElement).files?.[0] || null
+}
+
+function clearAttachment() {
+  attachmentFile.value = null
+  if (attachmentInput.value) attachmentInput.value.value = ''
+}
+
+function revokeAttachmentPreview() {
+  if (attachmentPreviewUrl.value && process.client) URL.revokeObjectURL(attachmentPreviewUrl.value)
+  attachmentPreviewUrl.value = ''
 }
 
 async function markCurrentChatRead() {
@@ -167,21 +217,36 @@ async function scrollMessagesToBottom() {
 }
 
 function chatTitle(chat: Record<string, unknown> | null | undefined): string {
-  if (!chat) return 'Без имени'
+  if (!chat) return 'Пользователь'
 
-  const userName = userDisplayName(getResourceValue(chat, 'user'))
+  const userName = firstDisplayText([
+    userDisplayName(getResourceValue(chat, 'user')),
+    userDisplayName(getResourceValue(chat, 'parent')),
+    userDisplayName(getResourceValue(chat, 'customer')),
+    userDisplayName(getResourceValue(chat, 'profile')),
+    userDisplayName(getResourceValue(chat, 'account')),
+    userDisplayName(getResourceValue(chat, 'child.parent'))
+  ])
   if (userName) return userName
 
-  return firstText([
+  return firstDisplayText([
+    getResourceValue(chat, 'user.full_name'),
+    getResourceValue(chat, 'user.fullName'),
+    getResourceValue(chat, 'user.display_name'),
+    getResourceValue(chat, 'user.displayName'),
+    getResourceValue(chat, 'user.username'),
+    getResourceValue(chat, 'parent.full_name'),
+    getResourceValue(chat, 'parent.fullName'),
     getResourceValue(chat, 'parent.name'),
+    getResourceValue(chat, 'customer.name'),
+    getResourceValue(chat, 'profile.name'),
     getResourceValue(chat, 'name'),
     getResourceValue(chat, 'user.email'),
     getResourceValue(chat, 'user.phone'),
     getResourceValue(chat, 'parent.email'),
     getResourceValue(chat, 'email'),
-    getResourceValue(chat, 'user_id'),
-    getResourceValue(chat, 'userId')
-  ]) || 'Без имени'
+    getResourceValue(chat, 'phone')
+  ]) || 'Пользователь'
 }
 
 function chatSubtitle(chat: Record<string, unknown> | null | undefined): string {
@@ -200,15 +265,24 @@ function userDisplayName(value: unknown): string {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return ''
 
   const user = value as Record<string, unknown>
+  const directName = firstDisplayText([
+    getResourceValue(user, 'full_name'),
+    getResourceValue(user, 'fullName'),
+    getResourceValue(user, 'display_name'),
+    getResourceValue(user, 'displayName'),
+    getResourceValue(user, 'username'),
+    getResourceValue(user, 'name')
+  ])
+  if (directName) return directName
+
   const fullName = [
-    firstText([getResourceValue(user, 'name'), getResourceValue(user, 'first_name'), getResourceValue(user, 'firstName')]),
-    firstText([getResourceValue(user, 'last_name'), getResourceValue(user, 'lastName'), getResourceValue(user, 'surname')])
+    firstDisplayText([getResourceValue(user, 'first_name'), getResourceValue(user, 'firstName')]),
+    firstDisplayText([getResourceValue(user, 'last_name'), getResourceValue(user, 'lastName'), getResourceValue(user, 'surname')])
   ].filter(Boolean).join(' ').trim()
 
-  return fullName || firstText([
+  return fullName || firstDisplayText([
     getResourceValue(user, 'email'),
-    getResourceValue(user, 'phone'),
-    getResourceValue(user, 'id')
+    getResourceValue(user, 'phone')
   ])
 }
 
@@ -218,10 +292,10 @@ function lastMessagePreview(chat: Record<string, unknown>): string {
     getResourceValue(chat, 'lastMessagePreview') ??
     getResourceValue(chat, 'lastMessage') ??
     getResourceValue(chat, 'last_message') ??
-    getResourceValue(chat, 'lastMessageText') ??
-    getResourceValue(chat, 'last_message_text')
+      getResourceValue(chat, 'lastMessageText') ??
+      getResourceValue(chat, 'last_message_text')
 
-  if (value && typeof value === 'object') return messageText(value as Record<string, unknown>)
+  if (value && typeof value === 'object') return messagePreview(value as Record<string, unknown>)
   return firstText([value]) || 'Нет сообщений'
 }
 
@@ -260,31 +334,159 @@ function chatTime(chat: Record<string, unknown>): string {
 }
 
 function messageText(message: Record<string, unknown>): string {
-  return firstText([
+  const text = firstText([
     getResourceValue(message, 'body'),
     getResourceValue(message, 'message'),
     getResourceValue(message, 'text'),
-    getResourceValue(message, 'content'),
-    message
-  ]) || 'Сообщение без текста'
+    getResourceValue(message, 'content')
+  ])
+  const attachment = messageAttachment(message)
+
+  if (text && mediaUrl(text) !== attachment) return text
+  return attachment ? '' : 'Сообщение без текста'
+}
+
+function messagePreview(message: Record<string, unknown>): string {
+  const text = messageText(message)
+  if (text) return text
+  if (isImageMessageAttachment(message)) return 'Изображение'
+  if (messageAttachment(message)) return 'Вложение'
+  return 'Сообщение без текста'
 }
 
 function messageAttachment(message: Record<string, unknown>): string {
-  return firstText([
-    getResourceValue(message, 'attachmentPath'),
-    getResourceValue(message, 'attachment_path'),
+  const attachmentPath = messageAttachmentPath(message)
+  if (attachmentPath) return supportAttachmentUrl(attachmentPath)
+
+  const directUrl = firstText([
     getResourceValue(message, 'attachment_url'),
     getResourceValue(message, 'attachmentUrl'),
+    getResourceValue(message, 'attachment.url'),
+    getResourceValue(message, 'file.url'),
+    getResourceValue(message, 'image_url'),
+    getResourceValue(message, 'imageUrl'),
+    getResourceValue(message, 'photo_url'),
+    getResourceValue(message, 'photoUrl'),
+    getResourceValue(message, 'url')
+  ])
+  if (directUrl) return mediaUrl(directUrl)
+
+  const value = firstAttachmentValue(message)
+  const path = pickMediaPath(value) || (typeof value === 'string' ? value : '')
+  if (path) return mediaUrl(path)
+
+  return ''
+}
+
+function firstAttachmentValue(message: Record<string, unknown>): unknown {
+  const directValues = [
+    getResourceValue(message, 'attachment'),
+    getResourceValue(message, 'file'),
+    getResourceValue(message, 'media'),
+    getResourceValue(message, 'image'),
+    getResourceValue(message, 'photo')
+  ]
+
+  for (const value of directValues) {
+    if (Array.isArray(value)) {
+      const first = value.find((entry) => pickMediaPath(entry) || typeof entry === 'string')
+      if (first) return first
+      continue
+    }
+
+    if (pickMediaPath(value) || typeof value === 'string') return value
+  }
+
+  for (const key of ['attachments', 'files', 'media_files', 'mediaFiles', 'images']) {
+    const value = getResourceValue(message, key)
+    if (!Array.isArray(value)) continue
+    const first = value.find((entry) => pickMediaPath(entry) || typeof entry === 'string')
+    if (first) return first
+  }
+
+  const inlineImage = firstText([
+    getResourceValue(message, 'body'),
+    getResourceValue(message, 'message'),
+    getResourceValue(message, 'text'),
+    getResourceValue(message, 'content')
+  ])
+  if (inlineImage && isImageUrl(mediaUrl(inlineImage))) return inlineImage
+
+  return firstText([
+    getResourceValue(message, 'attachment_url'),
+    getResourceValue(message, 'attachmentUrl'),
+    getResourceValue(message, 'image_url'),
+    getResourceValue(message, 'imageUrl'),
+    getResourceValue(message, 'photo_url'),
+    getResourceValue(message, 'photoUrl'),
     getResourceValue(message, 'attachment.url'),
     getResourceValue(message, 'file.url'),
     getResourceValue(message, 'url')
   ])
 }
 
+function messageAttachmentPath(message: Record<string, unknown>): string {
+  return firstText([
+    getResourceValue(message, 'attachment_path'),
+    getResourceValue(message, 'attachmentPath'),
+    getResourceValue(message, 'attachment.path'),
+    getResourceValue(message, 'file.path')
+  ])
+}
+
+function supportAttachmentUrl(path: string): string {
+  const normalized = path.trim().replace(/^\/+/, '')
+  if (/^(https?:|data:|blob:)/i.test(path)) return path
+  if (normalized.startsWith('api/v1/support/attachments/') || normalized.startsWith('media/')) return mediaUrl(normalized)
+
+  return mediaUrl(`/api/v1/support/attachments/${encodeURIComponent(normalized)}`)
+}
+
+function messageAttachmentLabel(message: Record<string, unknown>): string {
+  const value = firstAttachmentValue(message)
+  return firstText([
+    getResourceValue(value, 'name'),
+    getResourceValue(value, 'filename'),
+    getResourceValue(value, 'file_name'),
+    getResourceValue(value, 'original_name'),
+    getResourceValue(value, 'originalName'),
+    getResourceValue(message, 'attachment.name'),
+    getResourceValue(message, 'attachment.original_name'),
+    getResourceValue(message, 'attachment.originalName'),
+    getResourceValue(message, 'attachmentName'),
+    getResourceValue(message, 'attachment_name')
+  ]) || 'Вложение'
+}
+
+function isImageMessageAttachment(message: Record<string, unknown>): boolean {
+  const value = firstAttachmentValue(message)
+  const mime = firstText([
+    getResourceValue(value, 'mime'),
+    getResourceValue(value, 'mimeType'),
+    getResourceValue(value, 'mimetype'),
+    getResourceValue(value, 'mime_type'),
+    getResourceValue(value, 'type'),
+    getResourceValue(value, 'content_type'),
+    getResourceValue(value, 'contentType'),
+    getResourceValue(message, 'attachment_mime'),
+    getResourceValue(message, 'attachmentMime'),
+    getResourceValue(message, 'attachment_mime_type'),
+    getResourceValue(message, 'attachmentMimeType'),
+    getResourceValue(message, 'attachment_type'),
+    getResourceValue(message, 'attachmentType')
+  ]).toLowerCase()
+
+  if (mime.startsWith('image/')) return true
+  return isImageUrl(messageAttachment(message))
+}
+
 function messageAuthor(message: Record<string, unknown>): string {
   if (isOutgoingMessage(message)) return 'Админ'
 
-  return firstText([
+  return firstDisplayText([
+    userDisplayName(getResourceValue(message, 'user')),
+    userDisplayName(getResourceValue(message, 'author')),
+    userDisplayName(getResourceValue(message, 'sender')),
     getResourceValue(message, 'user.name'),
     getResourceValue(message, 'author.name'),
     getResourceValue(message, 'sender.name'),
@@ -368,6 +570,37 @@ function firstText(values: unknown[]): string {
   }
 
   return ''
+}
+
+function firstDisplayText(values: unknown[]): string {
+  for (const value of values) {
+    const text = extractTextValue(value)
+    if (text && !isUuidLike(text)) return text
+  }
+
+  return ''
+}
+
+function isUuidLike(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.trim())
+}
+
+function mediaUrl(value: unknown): string {
+  const source = String(value || '')
+  if (!source) return ''
+  if (/^(https?:|data:|blob:)/i.test(source)) return source
+
+  const baseUrl = String(config.public.apiBaseUrl || '').replace(/\/$/, '')
+  return `${baseUrl}/${source.replace(/^\//, '')}`
+}
+
+function isImageFile(file: File): boolean {
+  return file.type.startsWith('image/') || isImageUrl(file.name)
+}
+
+function isImageUrl(value: string): boolean {
+  const path = value.split('?')[0]?.split('#')[0] || value
+  return /^(data:image\/|blob:)/i.test(value) || /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(path)
 }
 
 function extractTextValue(value: unknown, seen = new WeakSet<object>()): string {
@@ -524,10 +757,25 @@ function formatShortTime(value: unknown): string {
             >
               <article class="telegram-bubble">
                 <strong v-if="!isOutgoingMessage(message)" class="telegram-message-author">{{ messageAuthor(message) }}</strong>
-                <p>{{ messageText(message) }}</p>
-                <a v-if="messageAttachment(message)" :href="messageAttachment(message)" target="_blank" rel="noreferrer">
+                <p v-if="messageText(message)">{{ messageText(message) }}</p>
+                <a
+                  v-if="messageAttachment(message) && isImageMessageAttachment(message)"
+                  class="telegram-attachment-image"
+                  :href="messageAttachment(message)"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <img :src="messageAttachment(message)" :alt="messageAttachmentLabel(message)">
+                </a>
+                <a
+                  v-else-if="messageAttachment(message)"
+                  class="telegram-attachment-link"
+                  :href="messageAttachment(message)"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   <AppIcon name="i-lucide-paperclip" />
-                  Вложение
+                  {{ messageAttachmentLabel(message) }}
                 </a>
                 <time>{{ messageTime(message) }}</time>
               </article>
@@ -535,16 +783,39 @@ function formatShortTime(value: unknown): string {
           </div>
 
           <form class="telegram-composer" @submit.prevent="sendMessage">
-            <textarea
-              v-model="replyText"
-              rows="1"
-              placeholder="Сообщение"
-              :disabled="sending"
-              @keydown.enter.exact.prevent="sendMessage"
-            />
-            <button class="telegram-send-button" type="submit" title="Отправить" :disabled="sending || !replyText.trim()">
-              <AppIcon name="i-lucide-send-horizontal" />
-            </button>
+            <div v-if="attachmentFile" class="telegram-composer-preview">
+              <img v-if="attachmentPreviewUrl" :src="attachmentPreviewUrl" :alt="attachmentFile.name">
+              <span v-else class="telegram-file-preview">
+                <AppIcon name="i-lucide-paperclip" />
+                {{ attachmentFile.name }}
+              </span>
+              <button class="telegram-icon-button" type="button" title="Убрать вложение" @click="clearAttachment">
+                <AppIcon name="i-lucide-x" />
+              </button>
+            </div>
+
+            <div class="telegram-composer-row">
+              <input
+                ref="attachmentInput"
+                hidden
+                type="file"
+                accept="image/*"
+                @change="selectAttachment"
+              >
+              <button class="telegram-icon-button" type="button" title="Прикрепить изображение" :disabled="sending" @click="attachmentInput?.click()">
+                <AppIcon name="i-lucide-paperclip" />
+              </button>
+              <textarea
+                v-model="replyText"
+                rows="1"
+                placeholder="Сообщение"
+                :disabled="sending"
+                @keydown.enter.exact.prevent="sendMessage"
+              />
+              <button class="telegram-send-button" type="submit" title="Отправить" :disabled="!canSendReply">
+                <AppIcon name="i-lucide-send-horizontal" />
+              </button>
+            </div>
           </form>
         </template>
       </main>

@@ -29,7 +29,10 @@ const formError = ref<ApiErrorInfo | null>(null)
 const queuedMessage = ref('')
 const handledUploadTaskIds = new Set<string>()
 
-const episodeUploadEndpoint = computed(() => `/api/v1/series/${encodeURIComponent(String(props.seriesId))}/episodes`)
+const episodeUploadEndpoint = '/v1/content/movies/create'
+const episodeUploadActive = computed(() =>
+  uploadQueue.tasks.some((task) => task.endpoint === episodeUploadEndpoint && ['queued', 'uploading', 'processing'].includes(task.status))
+)
 
 watch(
   () => props.seriesId,
@@ -53,7 +56,7 @@ watch(
   () => {
     const finished = uploadQueue.tasks.filter(
       (task) =>
-        task.endpoint === episodeUploadEndpoint.value &&
+        task.endpoint === episodeUploadEndpoint &&
         ['success', 'error', 'cancelled'].includes(task.status) &&
         task.completedAt &&
         !handledUploadTaskIds.has(task.id)
@@ -63,14 +66,21 @@ watch(
 
     const failed = finished.find((task) => task.status === 'error')
     if (failed) {
+      const details = [
+        failed.responseStatus ? `Статус: ${failed.responseStatus}` : '',
+        `Endpoint: ${failed.endpoint}`
+      ].filter(Boolean).join('. ')
+
       formError.value = {
-        message: failed.error || 'Не удалось загрузить эпизод.',
+        message: `${failed.error || 'Не удалось загрузить эпизод.'}${details ? ` ${details}.` : ''}`,
         statusCode: failed.responseStatus
       }
       queuedMessage.value = ''
     }
 
     if (finished.some((task) => task.status === 'success')) {
+      resetForm()
+      queuedMessage.value = 'Эпизод загружен.'
       void loadEpisodes()
       emit('updated')
     }
@@ -83,10 +93,10 @@ async function loadEpisodes() {
   loadingEpisodes.value = true
   error.value = null
 
-  const id = encodeURIComponent(String(props.seriesId))
   try {
-    const response = await api.get(`/api/v1/series/${id}/episodes`)
-    episodes.value = sortEpisodes(uniqueEpisodes(normalizeList(response, 'episodes').items))
+    const response = await api.get('/v1/content/movies', { limit: 500 })
+    const rows = normalizeList(response, 'movies').items.filter((row) => isEpisodeOfCurrentSeries(row))
+    episodes.value = sortEpisodes(uniqueEpisodes(rows))
   } catch (requestError) {
     error.value = requestError as ApiErrorInfo
     episodes.value = []
@@ -99,8 +109,8 @@ function submitEpisode() {
   formError.value = null
   queuedMessage.value = ''
 
-  if (!hasLocalizedText(title.value)) {
-    formError.value = { message: 'Заполните название эпизода хотя бы на одном языке.' }
+  if (!hasAllLocalizedText(title.value)) {
+    formError.value = { message: 'Заполните название эпизода на RU, UZ и EN.' }
     return
   }
 
@@ -116,27 +126,24 @@ function submitEpisode() {
   if (posterFile.value) body.append('poster', posterFile.value)
 
   uploadQueue.enqueue({
-    endpoint: episodeUploadEndpoint.value,
+    endpoint: episodeUploadEndpoint,
     method: 'POST',
     body,
     label: `Эпизод: ${pickLocalized(title.value) || videoFile.value.name}`,
-    resultRouteBase: '/content/series'
+    resultRouteBase: '/content/movies'
   })
 
   queuedMessage.value = 'Эпизод поставлен в очередь загрузки.'
-  episodeNumber.value += 1
-  title.value = { ru: '', uz: '', en: '' }
-  description.value = { ru: '', uz: '', en: '' }
-  videoFile.value = null
-  posterFile.value = null
-  fileInputKey.value += 1
 }
 
 function buildEpisodeMetadata(): Record<string, unknown> {
   const metadata: Record<string, unknown> = {
     title: title.value,
     description: description.value,
-    is_premium: isPremium.value
+    is_premium: isPremium.value,
+    series: [String(props.seriesId)],
+    series_id: String(props.seriesId),
+    content_type: 'episode'
   }
 
   const season = normalizePositiveInteger(seasonNumber.value)
@@ -159,8 +166,8 @@ function resetForm() {
   fileInputKey.value += 1
 }
 
-function hasLocalizedText(value: LocalizedText) {
-  return Object.values(value).some((entry) => String(entry || '').trim())
+function hasAllLocalizedText(value: LocalizedText) {
+  return ['ru', 'uz', 'en'].every((locale) => String(value[locale as keyof LocalizedText] || '').trim())
 }
 
 function uniqueEpisodes(rows: Record<string, unknown>[]) {
@@ -177,6 +184,25 @@ function uniqueEpisodes(rows: Record<string, unknown>[]) {
 
 function sortEpisodes(rows: Record<string, unknown>[]) {
   return [...rows].sort((left, right) => episodeOrderValue(left) - episodeOrderValue(right))
+}
+
+function isEpisodeOfCurrentSeries(row: Record<string, unknown>) {
+  const currentId = String(props.seriesId)
+  const directSeriesId =
+    getResourceValue(row, 'series_id') ??
+    getResourceValue(row, 'seriesId')
+
+  if (directSeriesId !== undefined && String(directSeriesId) === currentId) return true
+
+  const series = getResourceValue(row, 'series')
+  if (!Array.isArray(series)) return false
+
+  return series.some((entry) => {
+    if (typeof entry === 'string' || typeof entry === 'number') return String(entry) === currentId
+
+    const id = getItemId(entry) ?? getResourceValue(entry, 'series_id') ?? getResourceValue(entry, 'seriesId')
+    return id !== undefined && String(id) === currentId
+  })
 }
 
 function episodeOrderValue(row: Record<string, unknown>) {
@@ -218,25 +244,6 @@ function episodeTitle(row: Record<string, unknown>) {
   )
 }
 
-function episodeDescription(row: Record<string, unknown>) {
-  return pickLocalized(getResourceValue(row, 'description')) || ''
-}
-
-function episodePosterUrl(row: Record<string, unknown>) {
-  const value =
-    getResourceValue(row, 'poster_url') ??
-    getResourceValue(row, 'posterUrl') ??
-    getResourceValue(row, 'poster.url') ??
-    getResourceValue(row, 'poster') ??
-    getResourceValue(row, 'image_url') ??
-    getResourceValue(row, 'image') ??
-    getResourceValue(row, 'thumbnail_url') ??
-    getResourceValue(row, 'thumbnail')
-  const path = pickMediaPath(value)
-
-  return path ? mediaUrl(path) : ''
-}
-
 function episodeContentRoute(row: Record<string, unknown>) {
   if (!isContentMovieEpisode(row)) return ''
 
@@ -255,12 +262,19 @@ function isContentMovieEpisode(row: Record<string, unknown>) {
 }
 
 function episodeStatus(row: Record<string, unknown>) {
-  return (
-    getResourceValue(row, 'transcode_status') ||
-    getResourceValue(row, 'playback.status') ||
-    getResourceValue(row, 'status') ||
-    '—'
-  )
+  return transcodeStatusLabel(row)
+}
+
+function episodeStatusTone(row: Record<string, unknown>) {
+  return transcodeStatusTone(row)
+}
+
+function episodeProgressVisible(row: Record<string, unknown>) {
+  return transcodeProgressVisible(row)
+}
+
+function episodeProgressPercent(row: Record<string, unknown>) {
+  return transcodeProgressPercent(row) ?? 0
 }
 
 function episodeVideoUrl(row: Record<string, unknown>) {
@@ -366,9 +380,9 @@ function normalizeBoolean(value: unknown): boolean {
           <button class="button secondary" type="button" @click="resetForm">
             Сбросить
           </button>
-          <button class="button" type="submit">
+          <button class="button" type="submit" :disabled="episodeUploadActive">
             <AppIcon name="i-lucide-upload-cloud" />
-            Загрузить эпизод
+            {{ episodeUploadActive ? 'Загрузка...' : 'Загрузить эпизод' }}
           </button>
         </div>
       </form>
@@ -377,51 +391,7 @@ function normalizeBoolean(value: unknown): boolean {
         <ApiErrorAlert :error="error" />
         <div v-if="loadingEpisodes" class="loading-state">Загрузка эпизодов...</div>
         <div v-else-if="!episodes.length" class="empty-state" style="min-height: 120px;">Эпизоды пока не добавлены</div>
-        <div v-else>
-          <div class="series-episode-cards">
-            <article
-              v-for="episode in episodes"
-              :key="String(getItemId(episode) || episodeTitle(episode))"
-              class="series-episode-card"
-            >
-              <div class="series-episode-card-poster">
-                <img v-if="episodePosterUrl(episode)" :src="episodePosterUrl(episode)" alt="">
-                <AppIcon v-else name="i-lucide-film" />
-              </div>
-
-              <div class="series-episode-card-body">
-                <div class="series-episode-card-head">
-                  <span class="age-pill">{{ episodeNumberLabel(episode) }}</span>
-                  <StatusBadge :value="episodeStatus(episode)" />
-                </div>
-                <h3>{{ episodeTitle(episode) }}</h3>
-                <p>{{ episodeDescription(episode) || 'Описание не заполнено' }}</p>
-
-                <div class="series-episode-card-actions">
-                  <NuxtLink
-                    v-if="episodeContentRoute(episode)"
-                    class="button secondary"
-                    :to="episodeContentRoute(episode)"
-                  >
-                    <AppIcon name="i-lucide-folder-open" />
-                    Открыть контент
-                  </NuxtLink>
-                  <a
-                    v-if="episodeVideoUrl(episode)"
-                    class="button secondary"
-                    :href="episodeVideoUrl(episode)"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <AppIcon name="i-lucide-play" />
-                    Смотреть
-                  </a>
-                </div>
-              </div>
-            </article>
-          </div>
-
-          <div class="table-wrap series-episode-table">
+        <div v-else class="table-wrap series-episode-table">
             <table class="data-table">
               <thead>
                 <tr>
@@ -437,7 +407,12 @@ function normalizeBoolean(value: unknown): boolean {
                 <tr v-for="episode in episodes" :key="String(getItemId(episode) || episodeTitle(episode))">
                   <td><strong>{{ episodeNumberLabel(episode) }}</strong></td>
                   <td>{{ episodeTitle(episode) }}</td>
-                  <td><StatusBadge :value="episodeStatus(episode)" /></td>
+                  <td>
+                    <span class="table-tag status-tag" :class="episodeStatusTone(episode)">{{ episodeStatus(episode) }}</span>
+                    <div v-if="episodeProgressVisible(episode)" class="thin-progress" :title="`${episodeProgressPercent(episode)}%`">
+                      <span :style="{ width: `${episodeProgressPercent(episode)}%` }" />
+                    </div>
+                  </td>
                   <td>
                     <NuxtLink v-if="episodeContentRoute(episode)" class="button secondary" :to="episodeContentRoute(episode)">
                       <AppIcon name="i-lucide-folder-open" />
@@ -456,7 +431,6 @@ function normalizeBoolean(value: unknown): boolean {
                 </tr>
               </tbody>
             </table>
-          </div>
         </div>
       </div>
     </div>
