@@ -90,8 +90,36 @@ const permissionFields: ResourceField[] = [
   { key: 'daily_limit_minutes', label: 'Лимит в день, минут', type: 'number' }
 ]
 
+const movieCategoryField: ResourceField = {
+  key: 'category_id',
+  label: 'Категория',
+  type: 'select',
+  optionsEndpoint: '/v1/content/categories',
+  optionsListKey: 'categories',
+  optionLabelKey: 'title',
+  optionValueKey: 'id',
+  nullable: true
+}
+
+const movieSeriesField: ResourceField = {
+  key: 'series_id',
+  label: 'Сериал',
+  type: 'select',
+  optionsEndpoint: '/api/v1/series',
+  optionsListKey: 'series',
+  optionLabelKey: 'title',
+  optionValueKey: 'id',
+  nullable: true
+}
+
 const movieFields: ResourceField[] = [
   ...localizedTitleDescription,
+  movieCategoryField,
+  movieSeriesField,
+  { key: 'year', label: 'Год выпуска', type: 'number', placeholder: '2026', nullable: true },
+  { key: 'age_rating', label: 'Возрастное ограничение', type: 'number', defaultValue: 0 },
+  { key: 'duration_sec', label: 'Длительность, секунд', type: 'number', defaultValue: 0 },
+  { key: 'published', label: 'Опубликовано', type: 'checkbox' },
   { key: 'is_premium', label: 'Премиум', type: 'checkbox' },
   { key: 'source', label: 'Видео', type: 'text', send: false },
   // { key: 'transcode_status', label: 'Статус транскодинга', type: 'text' }
@@ -290,9 +318,12 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
       { key: 'id', label: 'ID' },
       { key: 'title', label: 'Название', kind: 'localized' },
       { key: 'is_premium', label: 'Премиум', kind: 'premium' },
+      { key: 'published', label: 'Опубликовано', kind: 'boolean' },
+      { key: 'year', label: 'Год', kind: 'number' },
+      { key: 'age_rating', label: 'Возраст', kind: 'number' },
       { key: 'source', label: 'Источник' },
       { key: 'transcode_status', label: 'Транскодинг', kind: 'status' },
-      { key: 'duration', label: 'Длительность', kind: 'number' },
+      { key: 'duration_sec', label: 'Длительность', kind: 'number' },
       { key: 'createdAt', label: 'Создан', kind: 'date' }
     ],
     filters: [

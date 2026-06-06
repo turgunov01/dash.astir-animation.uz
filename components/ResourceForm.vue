@@ -57,7 +57,9 @@ watch(
       const existing = props.initialValue ? getResourceValue(props.initialValue, field.key) : undefined
       if (existing !== undefined) {
         model[field.key] =
-          field.key === 'series'
+          field.nullable && existing === null
+            ? ''
+            : field.key === 'series'
             ? normalizeSeriesValue(existing)
             : field.type === 'json' && typeof existing === 'object'
               ? JSON.stringify(existing, null, 2)
@@ -161,7 +163,7 @@ function buildBody(): Record<string, unknown> | FormData {
         bodyFields
           .filter((field) => metadataFieldKeys.has(field.key))
           .map((field) => [field.key, parseFieldValue(field)] as const)
-          .filter(([, value]) => value !== undefined && value !== '')
+          .filter(([key, value]) => shouldSendFieldValue(fieldByKey(key), value))
       )
       formData.append(props.metadataKey, JSON.stringify(metadata))
     }
@@ -169,7 +171,7 @@ function buildBody(): Record<string, unknown> | FormData {
     for (const field of bodyFields) {
       if (metadataFieldKeys.has(field.key)) continue
       const value = parseFieldValue(field)
-      if (value === undefined || value === null || value === '') continue
+      if (!shouldSendFieldValue(field, value)) continue
       if (isFileValue(value)) {
         formData.append(field.key, value)
       } else if (typeof value === 'object') {
@@ -184,8 +186,18 @@ function buildBody(): Record<string, unknown> | FormData {
   return Object.fromEntries(
     bodyFields
       .map((field) => [field.key, parseFieldValue(field)] as const)
-      .filter(([, value]) => value !== undefined && value !== '')
+      .filter(([key, value]) => shouldSendFieldValue(fieldByKey(key), value))
   )
+}
+
+function fieldByKey(key: string): ResourceField {
+  return props.fields.find((field) => field.key === key) || { key, label: key, type: 'text' }
+}
+
+function shouldSendFieldValue(field: ResourceField, value: unknown): boolean {
+  if (value === undefined || value === '') return false
+  if (value === null) return Boolean(field.nullable)
+  return true
 }
 
 function shouldAppendMetadata(bodyFields: ResourceField[], metadataFieldKeys: Set<string>): boolean {
@@ -242,8 +254,18 @@ function parseFieldValue(field: ResourceField): unknown {
     return isFileValue(value) ? value : undefined
   }
 
+  if (field.nullable && (value === undefined || value === null || value === '')) {
+    return null
+  }
+
   if (field.key === 'series') {
     return value ? [value] : []
+  }
+
+  if (field.type === 'number') {
+    if (value === undefined || value === null || value === '') return undefined
+    const number = Number(value)
+    return Number.isFinite(number) ? number : value
   }
 
   if (field.type === 'json' && typeof value === 'string' && value.trim()) {
@@ -450,7 +472,7 @@ function normalizeSeriesValue(value: unknown): string | number | '' {
           </option>
         </select>
         <select v-else-if="field.type === 'select'" v-model="model[field.key]" class="select">
-          <option value="">Выберите</option>
+          <option value="">{{ field.nullable ? 'Не выбрано' : 'Выберите' }}</option>
           <option v-for="option in optionsFor(field)" :key="String(option.value)" :value="option.value">
             {{ option.label }}
           </option>

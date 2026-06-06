@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import type { ApiErrorInfo, LocalizedText, ResourceDefinition } from '~/types/api'
 
+interface ContentSelectOption {
+  label: string
+  value: string
+}
+
 const props = withDefaults(
   defineProps<{
     definition: ResourceDefinition
@@ -19,10 +24,20 @@ const uploadQueue = useUploadQueueStore()
 const title = ref<LocalizedText>({ uz: '', ru: '', en: '' })
 const description = ref<LocalizedText>({ uz: '', ru: '', en: '' })
 const isPremium = ref(false)
+const published = ref(false)
+const selectedCategoryId = ref('')
+const selectedSeriesId = ref('')
+const releaseYear = ref<number | ''>('')
+const ageRating = ref(0)
+const durationSec = ref(0)
 const seriesKind = ref<'seasons' | 'episodes'>('seasons')
 const seriesActive = ref(true)
 const selectedTagIds = ref<string[]>([])
 const freeFormTags = ref<string[]>([])
+const categoryOptions = ref<ContentSelectOption[]>([])
+const seriesOptions = ref<ContentSelectOption[]>([])
+const referenceLoading = ref(false)
+const referenceLoadError = ref('')
 const poster = ref<File | null>(null)
 const video = ref<File | null>(null)
 const posterInput = ref<HTMLInputElement | null>(null)
@@ -33,6 +48,10 @@ const error = ref<ApiErrorInfo | null>(null)
 const locales = ['uz', 'ru', 'en'] as const
 const posterPreview = computed(() => (poster.value && process.client ? URL.createObjectURL(poster.value) : ''))
 const pageTitle = computed(() => (props.contentType === 'series' ? 'Новый сериал' : 'Новый фильм'))
+
+onMounted(() => {
+  if (props.contentType === 'movie') void loadMovieReferenceOptions()
+})
 
 async function submit() {
   error.value = null
@@ -65,15 +84,16 @@ async function submit() {
       return
     }
 
-    if (video.value) {
+    if (video.value || poster.value) {
       const body = new FormData()
       body.append('metadata', JSON.stringify(buildMovieMetadata()))
-      body.append('video', video.value)
+      if (video.value) body.append('video', video.value)
+      if (poster.value) body.append('poster', poster.value)
       uploadQueue.enqueue({
         endpoint: props.definition.createEndpoint || '',
         method: 'POST',
         body,
-        label: `Видео: ${video.value.name}`,
+        label: video.value ? `Видео: ${video.value.name}` : `Постер: ${poster.value?.name || 'movie poster'}`,
         resultRouteBase: props.definition.detailRoute
       })
       await router.push(props.backTo)
@@ -100,18 +120,80 @@ function buildSeriesBody() {
 }
 
 function buildMovieMetadata() {
-  return {
+  const metadata: Record<string, unknown> = {
     title: title.value,
     description: description.value,
+    content_type: 'movie',
+    category_id: selectedCategoryId.value || undefined,
+    series_id: selectedSeriesId.value || undefined,
+    year: normalizeOptionalInteger(releaseYear.value),
+    age_rating: normalizeInteger(ageRating.value, 0),
+    duration_sec: normalizeInteger(durationSec.value, 0),
+    published: published.value,
     is_premium: isPremium.value,
     tag_ids: selectedTagIds.value,
     tags: freeFormTags.value
   }
+
+  return Object.fromEntries(Object.entries(metadata).filter(([, value]) => value !== undefined && value !== ''))
 }
 
 function getCreatedId(payload: unknown) {
   const data = unwrapPayload<Record<string, unknown>>(payload)
   return getItemId(data) || getItemId(data?.movie) || getItemId(data?.content) || getItemId(data?.series)
+}
+
+async function loadMovieReferenceOptions() {
+  referenceLoading.value = true
+  referenceLoadError.value = ''
+
+  const [categoriesResult, seriesResult] = await Promise.allSettled([
+    api.get('/v1/content/categories', { limit: 100 }),
+    api.get('/api/v1/series', { limit: 100 })
+  ])
+
+  if (categoriesResult.status === 'fulfilled') {
+    categoryOptions.value = normalizeList(categoriesResult.value, 'categories').items
+      .map(toSelectOption)
+      .filter((option): option is ContentSelectOption => Boolean(option))
+  } else {
+    categoryOptions.value = []
+  }
+
+  if (seriesResult.status === 'fulfilled') {
+    seriesOptions.value = normalizeList(seriesResult.value, 'series').items
+      .map(toSelectOption)
+      .filter((option): option is ContentSelectOption => Boolean(option))
+  } else {
+    seriesOptions.value = []
+  }
+
+  if (categoriesResult.status === 'rejected' || seriesResult.status === 'rejected') {
+    referenceLoadError.value = 'Не удалось загрузить категории или сериалы.'
+  }
+
+  referenceLoading.value = false
+}
+
+function toSelectOption(item: Record<string, unknown>): ContentSelectOption | null {
+  const id = getItemId(item)
+  if (id === undefined) return null
+
+  return {
+    value: String(id),
+    label: pickLocalized(getResourceValue(item, 'title')) ||
+      String(getResourceValue(item, 'name') || getResourceValue(item, 'slug') || id)
+  }
+}
+
+function normalizeInteger(value: unknown, fallback: number): number {
+  const number = Number(value)
+  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback
+}
+
+function normalizeOptionalInteger(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined
+  return normalizeInteger(value, 0)
 }
 </script>
 
@@ -129,7 +211,7 @@ function getCreatedId(payload: unknown) {
 
       <div class="content-form-layout">
         <aside class="poster-column">
-          <template v-if="contentType === 'series'">
+          <template v-if="contentType === 'movie' || contentType === 'series'">
             <span class="content-field-label">Постер</span>
             <button class="poster-preview" type="button" @click="posterInput?.click()">
               <img v-if="posterPreview" :src="posterPreview" alt="">
@@ -141,7 +223,7 @@ function getCreatedId(payload: unknown) {
             <input ref="posterInput" hidden type="file" accept="image/*" @change="poster = ($event.target as HTMLInputElement).files?.[0] || null">
             <button class="button secondary poster-upload" type="button" @click="posterInput?.click()">
               <AppIcon name="i-lucide-upload-cloud" />
-              Загрузить постер
+              {{ poster ? poster.name : 'Загрузить постер' }}
             </button>
           </template>
           <input ref="videoInput" hidden type="file" accept="video/*" @change="video = ($event.target as HTMLInputElement).files?.[0] || null">
@@ -173,6 +255,52 @@ function getCreatedId(payload: unknown) {
               <textarea v-model="description[locale]" class="textarea" rows="3" />
             </label>
           </div>
+
+          <template v-if="contentType === 'movie'">
+            <small v-if="referenceLoading" class="field-hint">Загрузка справочников...</small>
+            <small v-else-if="referenceLoadError" class="field-hint">{{ referenceLoadError }}</small>
+
+            <div class="content-number-grid">
+              <label class="field">
+                <span class="content-field-label">Категория</span>
+                <select v-model="selectedCategoryId" class="select">
+                  <option value="">Не выбрано</option>
+                  <option v-for="option in categoryOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="content-field-label">Сериал</span>
+                <select v-model="selectedSeriesId" class="select">
+                  <option value="">Без сериала</option>
+                  <option v-for="option in seriesOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+            </div>
+
+            <div class="content-number-grid">
+              <label class="field">
+                <span class="content-field-label">Год выпуска</span>
+                <input v-model.number="releaseYear" class="input" type="number" min="0" placeholder="2026">
+              </label>
+              <label class="field">
+                <span class="content-field-label">Возрастное ограничение</span>
+                <input v-model.number="ageRating" class="input" type="number" min="0">
+              </label>
+              <label class="field">
+                <span class="content-field-label">Длительность, секунд</span>
+                <input v-model.number="durationSec" class="input" type="number" min="0">
+              </label>
+            </div>
+          </template>
+
+          <label v-if="contentType === 'movie'" class="switch-row">
+            <input v-model="published" type="checkbox">
+            <span>Опубликовано</span>
+          </label>
 
           <label v-if="contentType === 'movie'" class="switch-row">
             <input v-model="isPremium" type="checkbox">

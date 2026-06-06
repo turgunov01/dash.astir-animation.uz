@@ -70,7 +70,7 @@ function buildPosterUploadCandidates(file: File) {
 function buildMetadataFormData(patch: Record<string, unknown>) {
   const metadata: Record<string, unknown> = { ...patch }
 
-  for (const key of ['title', 'description', 'is_premium', 'tag_ids']) {
+  for (const key of ['title', 'description', 'category_id', 'series_id', 'year', 'age_rating', 'duration_sec', 'published', 'is_premium', 'tag_ids']) {
     if (metadata[key] !== undefined) continue
     const value = getResourceValue(props.movie, key)
     if (value !== undefined && value !== null && value !== '') metadata[key] = value

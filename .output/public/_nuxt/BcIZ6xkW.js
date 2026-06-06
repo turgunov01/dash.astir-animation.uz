@@ -1,0 +1,1 @@
+import{_ as t}from"./BrtnNk8z.js";import{r as n}from"./DI7Ciex0.js";import{l as r,f as i,U as s,G as a}from"./C06Q-mPo.js";import"./YCNk7uCp.js";import"./DGnnHY8n.js";import"./BQPMUtv2.js";const q=r({__name:"create",setup(c){const o=n.faqs;return(f,m)=>{const e=t;return a(),i(e,{definition:s(o),"back-to":"/faqs"},null,8,["definition"])}}});export{q as default};

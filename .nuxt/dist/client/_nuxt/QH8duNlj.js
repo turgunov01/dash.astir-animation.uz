@@ -1,0 +1,1 @@
+import{_ as e}from"./BrtnNk8z.js";import{r as n}from"./DI7Ciex0.js";import{l as r,f as i,U as s,G as a}from"./C06Q-mPo.js";import"./YCNk7uCp.js";import"./DGnnHY8n.js";import"./BQPMUtv2.js";const g=r({__name:"create",setup(c){const o=n.tags;return(m,f)=>{const t=e;return a(),i(t,{definition:s(o),"back-to":"/content/tags"},null,8,["definition"])}}});export{g as default};

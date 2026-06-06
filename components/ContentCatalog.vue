@@ -151,7 +151,6 @@ function isSeriesItem(row: Record<string, unknown>) {
   if (['movie', 'movies', 'film', 'films'].includes(contentType)) return false
 
   return Boolean(
-    getResourceValue(row, 'series_id') ||
     getResourceValue(row, 'episodesCount') ||
     getResourceValue(row, 'episodes_count') ||
     getResourceValue(row, 'seasonsCount') ||

@@ -54,6 +54,7 @@ export interface ResourceField {
   optionsListKey?: string
   optionLabelKey?: string
   optionValueKey?: string
+  nullable?: boolean
 }
 
 export interface ResourceSubmitConfig {

@@ -1,4 +1,4 @@
-import process from 'node:process';globalThis._importMeta_={url:import.meta.url,env:process.env};import { tmpdir } from 'node:os';
+import process from 'node:process';globalThis._importMeta_={url:import.meta.url,env:process.env};import './timing.js';globalThis.__timing__.logStart('Nitro Start');import { tmpdir } from 'node:os';
 import { Server } from 'node:http';
 import { resolve, dirname, join } from 'node:path';
 import nodeCrypto from 'node:crypto';
@@ -18,7 +18,7 @@ import { createHead as createHead$1, propsToString, renderSSRHead } from 'file:/
 import { stringify, uneval } from 'file://D:/projects/astir-dashboard/node_modules/devalue/index.js';
 import { isVNode, isRef, toValue } from 'file://D:/projects/astir-dashboard/node_modules/vue/index.mjs';
 import { DeprecationsPlugin, PromisesPlugin, TemplateParamsPlugin, AliasSortingPlugin } from 'file://D:/projects/astir-dashboard/node_modules/unhead/dist/plugins.mjs';
-import { createHooks } from 'file://D:/projects/astir-dashboard/node_modules/nitropack/node_modules/hookable/dist/index.mjs';
+import { createDebugger, createHooks } from 'file://D:/projects/astir-dashboard/node_modules/nitropack/node_modules/hookable/dist/index.mjs';
 import { createFetch, Headers as Headers$1 } from 'file://D:/projects/astir-dashboard/node_modules/ofetch/dist/node.mjs';
 import { fetchNodeRequestHandler, callNodeRequestHandler } from 'file://D:/projects/astir-dashboard/node_modules/node-mock-http/dist/index.mjs';
 import { createStorage, prefixStorage } from 'file://D:/projects/astir-dashboard/node_modules/unstorage/dist/index.mjs';
@@ -2411,10 +2411,48 @@ const _M6fRJwofXkXtNJ1g4NaBXpudkV_Rw6yzUQ3BO5HAH30 = (function(nitro) {
   });
 });
 
+function defineNitroPlugin(def) {
+  return def;
+}
+
+const _s9vozs9iMDkjy13rFGdHPHizC3j4qOmqv9mLd2InUD4 = defineNitroPlugin((nitro) => {
+  createDebugger(nitro.hooks, { tag: "nitro-runtime" });
+});
+
+const globalTiming = globalThis.__timing__ || {
+  start: () => 0,
+  end: () => 0,
+  metrics: []
+};
+const timingMiddleware = eventHandler((event) => {
+  const start = globalTiming.start();
+  const _end = event.node.res.end;
+  event.node.res.end = function(chunk, encoding, cb) {
+    const metrics = [
+      ["Generate", globalTiming.end(start)],
+      ...globalTiming.metrics
+    ];
+    const serverTiming = metrics.map((m) => `-;dur=${m[1]};desc="${encodeURIComponent(m[0])}"`).join(", ");
+    if (!event.node.res.headersSent) {
+      event.node.res.setHeader("Server-Timing", serverTiming);
+    }
+    _end.call(event.node.res, chunk, encoding, cb);
+    return this;
+  }.bind(event.node.res);
+});
+const _1eOpEYjvuOVz0UDmeLVqjClb12oWX2WO1hX1m29HX4 = defineNitroPlugin((nitro) => {
+  nitro.h3App.stack.unshift({
+    route: "/",
+    handler: timingMiddleware
+  });
+});
+
 const plugins = [
   _edkBMSlGerOgu_a2Vd5nUmOYeN2kxKUEK_RROUPdwOU,
 _ncbviOpuS2siaDrSQakqyCxJE7_K0qaTkmYsZlLa5c,
 _M6fRJwofXkXtNJ1g4NaBXpudkV_Rw6yzUQ3BO5HAH30,
+_s9vozs9iMDkjy13rFGdHPHizC3j4qOmqv9mLd2InUD4,
+_1eOpEYjvuOVz0UDmeLVqjClb12oWX2WO1hX1m29HX4,
 _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw
 ];
 
@@ -3634,5 +3672,5 @@ function renderHTMLDocument(html) {
 const renderer = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   __proto__: null,
   default: handler
-}, Symbol.toStringTag, { value: 'Module' }));
+}, Symbol.toStringTag, { value: 'Module' }));;globalThis.__timing__.logEnd('Nitro Start');
 //# sourceMappingURL=index.mjs.map
