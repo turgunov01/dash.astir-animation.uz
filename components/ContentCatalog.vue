@@ -178,6 +178,11 @@ function rowRoute(row: Record<string, unknown>) {
   return props.definition.detailRoute && id !== undefined ? `${props.definition.detailRoute}/${id}` : ''
 }
 
+function commentsRoute(row: Record<string, unknown>) {
+  const id = getItemId(row, props.definition.idKey)
+  return id !== undefined ? `/content/comments?contentId=${encodeURIComponent(String(id))}` : ''
+}
+
 function titleOf(row: Record<string, unknown>) {
   return pickLocalized(getObjectValue(row, 'title')) || String(getObjectValue(row, 'name') || 'Без названия')
 }
@@ -426,6 +431,9 @@ async function confirmDelete() {
                   <AppIcon name="i-lucide-upload-cloud" />
                   Загрузить файл
                 </button>
+                <NuxtLink v-if="commentsRoute(row)" class="icon-link" :to="commentsRoute(row)" title="Комментарии">
+                  <AppIcon name="i-lucide-message-square-text" />
+                </NuxtLink>
                 <NuxtLink class="icon-link" :to="rowRoute(row) || '#'" title="Редактировать">
                   <AppIcon name="i-lucide-pencil" />
                 </NuxtLink>

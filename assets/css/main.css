@@ -1836,6 +1836,141 @@ textarea {
   height: 42px;
 }
 
+.comments-page {
+  display: grid;
+  gap: 16px;
+}
+
+.comments-controls {
+  box-shadow: none;
+}
+
+.comments-content-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 420px) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+}
+
+.comments-content-field {
+  min-width: 0;
+}
+
+.comments-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 16px;
+  align-items: start;
+}
+
+.comments-list-panel,
+.comments-composer-panel {
+  min-width: 0;
+}
+
+.comments-panel-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 780;
+}
+
+.comments-panel-subtitle {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  word-break: break-word;
+}
+
+.comments-list {
+  display: grid;
+  gap: 12px;
+}
+
+.comment-item {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: 14px;
+}
+
+.comment-head,
+.comment-footer,
+.comment-author,
+.comment-meta,
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.comment-head,
+.comment-footer {
+  justify-content: space-between;
+}
+
+.comment-author {
+  min-width: 0;
+}
+
+.comment-author strong,
+.comment-author small {
+  display: block;
+}
+
+.comment-author strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.comment-author small,
+.comment-meta,
+.comment-footer {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.comment-avatar {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--primary) 16%, var(--surface-soft));
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.comment-body {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.comment-edit-form,
+.comments-composer {
+  display: grid;
+  gap: 12px;
+}
+
+.comment-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.comments-notice {
+  border-color: color-mix(in srgb, var(--success) 35%, transparent);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
+}
+
 .api-debug-page {
   display: grid;
   gap: 16px;
@@ -2168,6 +2303,25 @@ textarea {
 
   .telegram-bubble {
     max-width: 88%;
+  }
+
+  .comments-content-form,
+  .comments-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .comment-head,
+  .comment-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .comment-meta {
+    flex-wrap: wrap;
+  }
+
+  .comment-actions {
+    width: 100%;
   }
 
   .api-debug-entry {

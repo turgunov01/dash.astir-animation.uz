@@ -167,11 +167,22 @@ export function normalizeApiError(error: unknown): ApiErrorInfo {
 
   return {
     code,
-    message,
+    message: humanReadableErrorMessage(code, message),
     requestId,
     statusCode: record.statusCode || record.status || record.response?.status,
     raw: error
   }
+}
+
+function humanReadableErrorMessage(code: string | undefined, message: string): string {
+  const normalizedCode = String(code || '').toLowerCase()
+  const normalizedMessage = String(message || '').toLowerCase()
+
+  if (normalizedCode === 'invalid_role' || normalizedMessage === 'invalid_role') {
+    return 'Выбранная роль не поддерживается этим endpoint.'
+  }
+
+  return message
 }
 
 function localizedErrorMessage(value: unknown): string {

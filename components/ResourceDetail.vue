@@ -184,7 +184,7 @@ function normalizeBooleanValue(value: unknown): boolean {
           @updated="load"
         />
 
-        <div v-if="definition.updateEndpoint && definition.formFields?.length" class="panel">
+        <div v-if="definition.updateEndpoint && (definition.updateFormFields || definition.formFields)?.length" class="panel">
           <div class="panel-header">
             <div>
               <h2 style="margin: 0; font-size: 18px;">Редактирование</h2>
@@ -193,7 +193,7 @@ function normalizeBooleanValue(value: unknown): boolean {
           </div>
           <div class="panel-body">
             <ResourceForm
-              :fields="definition.formFields"
+              :fields="definition.updateFormFields || definition.formFields"
               :initial-value="item"
               :endpoint="definition.updateEndpoint"
               :method="definition.updateMethod || 'PUT'"

@@ -50,6 +50,10 @@ export interface ResourceField {
   rows?: number
   accept?: string
   send?: boolean
+  optionsEndpoint?: string
+  optionsListKey?: string
+  optionLabelKey?: string
+  optionValueKey?: string
 }
 
 export interface ResourceSubmitConfig {
@@ -117,6 +121,8 @@ export interface ResourceDefinition {
   columns: ResourceColumn[]
   filters?: ResourceFilter[]
   formFields?: ResourceField[]
+  createFormFields?: ResourceField[]
+  updateFormFields?: ResourceField[]
   createSubmit?: ResourceSubmitConfig
   updateSubmit?: ResourceSubmitConfig
   related?: RelatedEndpointDefinition[]

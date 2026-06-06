@@ -1,6 +1,6 @@
 {
-  "pid": 30292,
-  "startedAt": 1780274440174,
+  "pid": 14676,
+  "startedAt": 1780726167166,
   "command": "dev",
   "cwd": "D:/projects/astir-dashboard",
   "port": 3001,

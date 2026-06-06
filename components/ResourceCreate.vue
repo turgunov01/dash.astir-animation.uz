@@ -31,7 +31,7 @@ async function onSuccess(response: unknown) {
     <div class="panel">
       <div class="panel-body">
         <ResourceForm
-          :fields="definition.formFields || []"
+          :fields="definition.createFormFields || definition.formFields || []"
           :endpoint="definition.createEndpoint"
           method="POST"
           submit-label="Создать"

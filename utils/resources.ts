@@ -1,8 +1,12 @@
 import type { EndpointToolDefinition, ResourceDefinition, ResourceField } from '~/types/api'
 
-const roleOptions = [
+const staffRoleOptions = [
   { label: 'Админ', value: 'admin' },
-  { label: 'Супер-админ', value: 'super_admin' },
+  { label: 'Супер-админ', value: 'super_admin' }
+]
+
+const roleOptions = [
+  ...staffRoleOptions,
   { label: 'Родитель', value: 'parent' }
 ]
 
@@ -41,6 +45,21 @@ const userFields: ResourceField[] = [
   { key: 'password', label: 'Пароль', type: 'password', help: 'Нужен только при создании нового пользователя.' },
   { key: 'role', label: 'Роль', type: 'select', options: roleOptions, defaultValue: 'admin', required: true },
   { key: 'active', label: 'Активен', type: 'checkbox', defaultValue: true }
+]
+
+const staffCreateFields: ResourceField[] = [
+  { key: 'email', label: 'Email', type: 'email', required: true },
+  { key: 'name', label: 'Имя', type: 'text', required: true },
+  { key: 'password', label: 'Пароль', type: 'password', required: true },
+  {
+    key: 'role',
+    label: 'Роль',
+    type: 'select',
+    options: staffRoleOptions,
+    defaultValue: 'admin',
+    required: true,
+    help: 'Родители создаются через регистрацию/OTP flow, этот endpoint создает только staff.'
+  }
 ]
 
 const childrenFields: ResourceField[] = [
@@ -96,6 +115,17 @@ const tariffFields: ResourceField[] = [
   { key: 'can_watch_premium', label: 'Открывает премиум', type: 'checkbox' }
 ]
 
+const tariffSelectField: ResourceField = {
+  key: 'tariffId',
+  label: 'Тариф',
+  type: 'select',
+  required: true,
+  optionsEndpoint: '/v1/tariffs',
+  optionsListKey: 'tariffs',
+  optionLabelKey: 'title',
+  optionValueKey: 'id'
+}
+
 const faqFields: ResourceField[] = [
   { key: 'question', label: 'Вопрос', type: 'localized', required: true },
   { key: 'answer', label: 'Ответ', type: 'localized', rows: 5, required: true },
@@ -114,7 +144,7 @@ const userTools: EndpointToolDefinition[] = [
     title: 'Назначить план',
     endpoint: '/api/v1/users/{id}/plan',
     method: 'POST',
-    fields: [{ key: 'tariffId', label: 'ID тарифа', type: 'text', required: true }]
+    fields: [tariffSelectField]
   }
 ]
 
@@ -182,6 +212,7 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
       }
     ],
     formFields: userFields,
+    createFormFields: staffCreateFields,
     related: [
       { title: 'Дети пользователя', endpoint: '/api/v1/users/{id}/children' },
       { title: 'Подписки пользователя', endpoint: '/api/v1/users/{id}/subscriptions' },
@@ -537,7 +568,8 @@ export const navigation = [
       { label: 'Фильмы', to: '/content/movies', icon: 'i-lucide-clapperboard' },
       { label: 'Сериалы', to: '/content/series', icon: 'i-lucide-panels-top-left' },
       { label: 'Категории', to: '/content/categories', icon: 'i-lucide-tags' },
-      { label: 'Теги', to: '/content/tags', icon: 'i-lucide-tag' }
+      { label: 'Теги', to: '/content/tags', icon: 'i-lucide-tag' },
+      { label: 'Комментарии', to: '/content/comments', icon: 'i-lucide-message-square-text' }
     ]
   },
   { label: 'Тарифы', to: '/tariffs', icon: 'i-lucide-badge-dollar-sign' },
@@ -594,7 +626,7 @@ export const billingTools: EndpointToolDefinition[] = [
     endpoint: '/api/v1/billing/checkout',
     method: 'POST',
     fields: [
-      { key: 'tariffId', label: 'Tariff ID', type: 'text', required: true },
+      tariffSelectField,
       { key: 'provider', label: 'Provider', type: 'text', defaultValue: 'click' }
     ]
   },
@@ -603,7 +635,7 @@ export const billingTools: EndpointToolDefinition[] = [
     endpoint: '/api/v1/billing/checkout/deeplink',
     method: 'POST',
     fields: [
-      { key: 'tariffId', label: 'Tariff ID', type: 'text', required: true },
+      tariffSelectField,
       { key: 'returnUrl', label: 'Return URL', type: 'text' }
     ]
   },

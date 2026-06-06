@@ -48,6 +48,7 @@ const model = reactive<Record<string, unknown>>({})
 const loading = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
 const seriesOptions = ref<Array<{ label: string; value: string | number }>>([])
+const dynamicOptions = ref<Record<string, Array<{ label: string; value: string | number | boolean }>>>({})
 
 watch(
   () => [props.fields, props.initialValue],
@@ -79,6 +80,7 @@ watch(
   () => props.fields,
   () => {
     if (props.fields.some((field) => field.key === 'series')) void loadSeriesOptions()
+    void loadDynamicOptions()
   },
   { immediate: true }
 )
@@ -255,6 +257,10 @@ function parseFieldValue(field: ResourceField): unknown {
   return value
 }
 
+function optionsFor(field: ResourceField) {
+  return field.optionsEndpoint ? dynamicOptions.value[field.key] || [] : field.options || []
+}
+
 function isFileValue(value: unknown): value is File {
   return typeof File !== 'undefined' && value instanceof File
 }
@@ -348,6 +354,46 @@ async function loadSeriesOptions() {
   }
 }
 
+async function loadDynamicOptions() {
+  const fields = props.fields.filter((field) => field.type === 'select' && field.optionsEndpoint)
+  if (!fields.length) return
+
+  await Promise.all(fields.map((field) => loadDynamicFieldOptions(field)))
+}
+
+async function loadDynamicFieldOptions(field: ResourceField) {
+  if (!field.optionsEndpoint) return
+
+  try {
+    const response = await api.get(field.optionsEndpoint, { limit: 100 })
+    const rows = normalizeList(response, field.optionsListKey || '').items
+    dynamicOptions.value = {
+      ...dynamicOptions.value,
+      [field.key]: rows
+        .map((row) => dynamicOptionFromRow(row, field))
+        .filter((item): item is { label: string; value: string | number | boolean } => Boolean(item))
+    }
+  } catch {
+    dynamicOptions.value = { ...dynamicOptions.value, [field.key]: [] }
+  }
+}
+
+function dynamicOptionFromRow(row: Record<string, unknown>, field: ResourceField) {
+  const value = getResourceValue(row, field.optionValueKey || 'id') ?? getItemId(row)
+  if (!['string', 'number', 'boolean'].includes(typeof value)) return null
+
+  const labelValue =
+    getResourceValue(row, field.optionLabelKey || 'title') ??
+    getResourceValue(row, 'name') ??
+    getResourceValue(row, 'label') ??
+    value
+
+  return {
+    label: pickLocalized(labelValue) || String(labelValue),
+    value: value as string | number | boolean
+  }
+}
+
 function normalizeSeriesValue(value: unknown): string | number | '' {
   if (Array.isArray(value)) {
     const first = value[0]
@@ -405,7 +451,7 @@ function normalizeSeriesValue(value: unknown): string | number | '' {
         </select>
         <select v-else-if="field.type === 'select'" v-model="model[field.key]" class="select">
           <option value="">Выберите</option>
-          <option v-for="option in field.options || []" :key="String(option.value)" :value="option.value">
+          <option v-for="option in optionsFor(field)" :key="String(option.value)" :value="option.value">
             {{ option.label }}
           </option>
         </select>

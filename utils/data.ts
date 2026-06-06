@@ -18,6 +18,7 @@ const resourceEntityKeys = [
   'chat',
   'message',
   'support_message',
+  'comment',
   'faq'
 ]
 
@@ -37,7 +38,7 @@ export function getObjectValue(source: unknown, path: string): unknown {
 }
 
 export function getItemId(source: unknown, preferredKey = 'id'): string | number | undefined {
-  const keys = [preferredKey, 'id', '_id', 'uuid', 'movie_id', 'category_id', 'tag_id', 'tariff_id', 'child_id', 'user_id', 'chat_id', 'message_id']
+  const keys = [preferredKey, 'id', '_id', 'uuid', 'movie_id', 'category_id', 'tag_id', 'tariff_id', 'child_id', 'user_id', 'chat_id', 'message_id', 'comment_id']
 
   for (const key of keys) {
     const value = getObjectValue(source, key)
@@ -101,6 +102,7 @@ export function normalizeList(payload: unknown, preferredListKeys: string | stri
       'cards',
       'chats',
       'messages',
+      'comments',
       'faqs',
       'content',
       'contents'
