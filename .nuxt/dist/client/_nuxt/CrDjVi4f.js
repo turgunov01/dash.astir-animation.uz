@@ -1,0 +1,1 @@
+import{_ as t}from"./zQMEDD6I.js";import{r}from"./DT44cq8x.js";import{l as n,f as i,U as s,G as a}from"./B0oP3caF.js";import"./7TR-bhFG.js";import"./DItrH0hM.js";import"./BhHXzG6M.js";const x=n({__name:"create",setup(f){const o=r.tariffs;return(c,m)=>{const e=t;return a(),i(e,{definition:s(o),"back-to":"/tariffs"},null,8,["definition"])}}});export{x as default};

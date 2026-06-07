@@ -223,6 +223,7 @@ function normalizeBooleanValue(value: unknown): boolean {
           :tool="tool"
           :context="context"
           :redirect-to="definition.detailRoute || ''"
+          @success="load"
         />
 
         <div v-for="entry in visibleRelatedEntries" :key="entry.title" class="panel">

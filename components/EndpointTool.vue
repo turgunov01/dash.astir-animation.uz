@@ -7,7 +7,16 @@ defineProps<{
   redirectTo?: string
 }>()
 
+const emit = defineEmits<{
+  success: [value: unknown]
+}>()
+
 const result = ref<unknown>(null)
+
+function handleSuccess(value: unknown) {
+  result.value = value
+  emit('success', value)
+}
 </script>
 
 <template>
@@ -32,7 +41,7 @@ const result = ref<unknown>(null)
         :background-label="tool.title"
         :background-result-route-base="redirectTo || ''"
         :submit-label="tool.danger ? 'Выполнить опасное действие' : 'Выполнить'"
-        @success="result = $event"
+        @success="handleSuccess"
       />
       <pre v-if="result" class="code" style="margin-top: 14px;">{{ JSON.stringify(result, null, 2) }}</pre>
     </div>

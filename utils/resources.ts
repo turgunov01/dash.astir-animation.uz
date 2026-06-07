@@ -154,6 +154,16 @@ const tariffSelectField: ResourceField = {
   optionValueKey: 'id'
 }
 
+const userPlanSelectField: ResourceField = {
+  key: 'plan_id',
+  label: 'Тариф',
+  type: 'select',
+  required: true,
+  optionsEndpoint: '/api/v1/plans',
+  optionLabelKey: 'name',
+  optionValueKey: 'id'
+}
+
 const faqFields: ResourceField[] = [
   { key: 'question', label: 'Вопрос', type: 'localized', required: true },
   { key: 'answer', label: 'Ответ', type: 'localized', rows: 5, required: true },
@@ -169,10 +179,14 @@ const userTools: EndpointToolDefinition[] = [
     fields: [{ key: 'active', label: 'Активен', type: 'checkbox', defaultValue: true }]
   },
   {
-    title: 'Назначить план',
+    title: 'Назначить тариф',
     endpoint: '/api/v1/users/{id}/plan',
     method: 'POST',
-    fields: [tariffSelectField]
+    pathParams: ['id'],
+    fields: [
+      userPlanSelectField,
+      { key: 'auto_renew', label: 'Автопродление', type: 'checkbox', defaultValue: true }
+    ]
   }
 ]
 

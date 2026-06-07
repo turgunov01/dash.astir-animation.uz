@@ -15,10 +15,15 @@ const loading = ref(false)
 const deleting = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
 const deleteTarget = ref<Record<string, unknown> | null>(null)
+const searchQuery = ref('')
 const minAge = ref(0)
 const maxAge = ref(18)
 const likedOnly = ref(false)
+const selectedCategory = ref('')
 const selectedTags = ref<string[]>([])
+const categoryOptions = ref<Array<{ value: string; label: string; slug: string }>>([])
+const categoriesLoading = ref(false)
+const categoriesLoadError = ref('')
 const tagOptions = ref<Array<{ id: string; label: string; slug: string }>>([])
 const tagsLoading = ref(false)
 const tagsLoadError = ref('')
@@ -26,7 +31,9 @@ const fileInputs = ref<Record<string, HTMLInputElement | null>>({})
 const handledUploadTaskIds = new Set<string>()
 const visibleTagsLimit = 3
 
-watch([minAge, maxAge, likedOnly, selectedTags], () => load(), { deep: true })
+const isMovieCatalog = computed(() => props.definition.key === 'movies')
+
+watch([searchQuery, minAge, maxAge, likedOnly, selectedCategory, selectedTags], () => load(), { deep: true })
 watch(
   () => uploadQueue.tasks.map((task) => `${task.id}:${task.status}:${task.completedAt || ''}`).join('|'),
   () => {
@@ -39,6 +46,7 @@ watch(
   }
 )
 onMounted(() => {
+  void loadCategoryOptions()
   void loadTagOptions()
   void load()
 })
@@ -50,12 +58,7 @@ async function load() {
   error.value = null
 
   try {
-    const response = await api.get(props.definition.listEndpoint, {
-      min_age: minAge.value,
-      max_age: maxAge.value,
-      liked: likedOnly.value || undefined,
-      tag_ids: selectedTags.value.join(',') || undefined
-    })
+    const response = await api.get(props.definition.listEndpoint, buildListQuery())
     const normalized = normalizeList(response, props.definition.key)
     const scopedItems = filterCatalogItems(normalized.items)
     items.value = scopedItems
@@ -71,10 +74,68 @@ async function load() {
   }
 }
 
+function buildListQuery() {
+  const tagsQuery = selectedTags.value.join(',') || undefined
+  const query: Record<string, unknown> = {
+    min_age: minAge.value,
+    max_age: maxAge.value,
+    liked: likedOnly.value || undefined
+  }
+
+  if (isMovieCatalog.value) {
+    query.q = searchQuery.value.trim() || undefined
+    query.category = selectedCategory.value || undefined
+    query.tags = tagsQuery
+  } else {
+    query.tag_ids = tagsQuery
+  }
+
+  return query
+}
+
 function toggleTag(tag: string) {
   selectedTags.value = selectedTags.value.includes(tag)
     ? selectedTags.value.filter((item) => item !== tag)
     : [...selectedTags.value, tag]
+}
+
+function resetFilters() {
+  searchQuery.value = ''
+  selectedCategory.value = ''
+  selectedTags.value = []
+  minAge.value = 0
+  maxAge.value = 18
+  likedOnly.value = false
+}
+
+async function loadCategoryOptions() {
+  if (!isMovieCatalog.value) return
+
+  categoriesLoading.value = true
+  categoriesLoadError.value = ''
+
+  try {
+    const response = await api.get('/v1/content/categories', { limit: 100 })
+    const seen = new Set<string>()
+
+    categoryOptions.value = normalizeList(response, 'categories').items
+      .map(toCategoryOption)
+      .filter((option): option is { value: string; label: string; slug: string } => {
+        if (!option || seen.has(option.value)) return false
+        seen.add(option.value)
+        return true
+      })
+
+    if (selectedCategory.value && !categoryOptions.value.some((category) => category.value === selectedCategory.value)) {
+      selectedCategory.value = ''
+    }
+  } catch {
+    categoriesLoadError.value = 'Не удалось загрузить категории'
+    categoryOptions.value = []
+    selectedCategory.value = ''
+  } finally {
+    categoriesLoading.value = false
+  }
 }
 
 async function loadTagOptions() {
@@ -100,6 +161,23 @@ async function loadTagOptions() {
     selectedTags.value = []
   } finally {
     tagsLoading.value = false
+  }
+}
+
+function toCategoryOption(item: Record<string, unknown>): { value: string; label: string; slug: string } | null {
+  const id = getItemId(item)
+  const slug = String(getResourceValue(item, 'slug') || '').trim()
+  const title = pickLocalized(getResourceValue(item, 'title') ?? getResourceValue(item, 'name') ?? getResourceValue(item, 'label'))
+  const value = id === undefined ? slug || title : String(id)
+
+  if (!value) return null
+
+  const label = title || slug || value
+
+  return {
+    value,
+    label: slug && slug !== label ? `${label} (${slug})` : label,
+    slug
   }
 }
 
@@ -329,6 +407,19 @@ async function confirmDelete() {
     <div class="catalog-filter">
       <strong>Фильтр</strong>
       <div class="catalog-filter-row">
+        <label v-if="isMovieCatalog" class="compact-field catalog-search-field">
+          <span>Поиск</span>
+          <input v-model="searchQuery" class="input" type="search" placeholder="Название или текст">
+        </label>
+        <label v-if="isMovieCatalog" class="compact-field catalog-category-field">
+          <span>Категория</span>
+          <select v-model="selectedCategory" class="select" :disabled="categoriesLoading">
+            <option value="">Все категории</option>
+            <option v-for="category in categoryOptions" :key="category.value" :value="category.value">
+              {{ category.label }}
+            </option>
+          </select>
+        </label>
         <label class="compact-field">
           <span>Мин. возраст</span>
           <input v-model.number="minAge" class="input" type="number" min="0">
@@ -341,7 +432,12 @@ async function confirmDelete() {
           <input v-model="likedOnly" type="checkbox">
           <span>Только понравившиеся</span>
         </label>
+        <button v-if="isMovieCatalog" class="button secondary small-action catalog-filter-reset" type="button" @click="resetFilters">
+          <AppIcon name="i-lucide-x" />
+          Сбросить
+        </button>
       </div>
+      <small v-if="categoriesLoadError" class="field-hint">{{ categoriesLoadError }}</small>
       <div class="field">
         <span class="content-field-label">По тегам</span>
         <div v-if="tagsLoading" class="field-hint">Загрузка тегов...</div>

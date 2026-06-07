@@ -1257,9 +1257,21 @@ textarea {
   font-weight: 760;
 }
 
+.catalog-search-field {
+  width: min(100%, 320px);
+}
+
+.catalog-category-field {
+  width: min(100%, 260px);
+}
+
 .compact-switch {
   min-height: 40px;
   font-size: 12px;
+}
+
+.catalog-filter-reset {
+  align-self: end;
 }
 
 .catalog-table-wrap {

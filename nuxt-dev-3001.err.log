@@ -42,3 +42,102 @@
   17 |      );
   18 |    } else {[39m[2m (x4)[22m
 
+
+[41m[30m ERROR [39m[49m Pre-transform error: Failed to resolve import "#app-manifest" from "node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/projects/astir-dashboard/node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6[39m:16:6
+[33m  14 |        /* webpackIgnore: true */
+  15 |        /* @vite-ignore */
+  16 |        "#app-manifest"
+     |        ^
+  17 |      );
+  18 |    } else {[39m
+
+
+[41m[30m ERROR [39m[49m Pre-transform error: Failed to resolve import "#app-manifest" from "node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/projects/astir-dashboard/node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6[39m:16:6
+[33m  14 |        /* webpackIgnore: true */
+  15 |        /* @vite-ignore */
+  16 |        "#app-manifest"
+     |        ^
+  17 |      );
+  18 |    } else {[39m[2m (x2)[22m
+
+
+[41m[30m ERROR [39m[49m Pre-transform error: Failed to resolve import "#app-manifest" from "node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/projects/astir-dashboard/node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6[39m:16:6
+[33m  14 |        /* webpackIgnore: true */
+  15 |        /* @vite-ignore */
+  16 |        "#app-manifest"
+     |        ^
+  17 |      );
+  18 |    } else {[39m[2m (x3)[22m
+
+
+[41m[30m ERROR [39m[49m Pre-transform error: Failed to resolve import "#app-manifest" from "node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/projects/astir-dashboard/node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6[39m:16:6
+[33m  14 |        /* webpackIgnore: true */
+  15 |        /* @vite-ignore */
+  16 |        "#app-manifest"
+     |        ^
+  17 |      );
+  18 |    } else {[39m[2m (x4)[22m
+
+
+[41m[30m ERROR [39m[49m Pre-transform error: Failed to resolve import "#app-manifest" from "node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/projects/astir-dashboard/node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6[39m:16:6
+[33m  14 |        /* webpackIgnore: true */
+  15 |        /* @vite-ignore */
+  16 |        "#app-manifest"
+     |        ^
+  17 |      );
+  18 |    } else {[39m
+
+
+[41m[30m ERROR [39m[49m Pre-transform error: Failed to resolve import "#app-manifest" from "node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/projects/astir-dashboard/node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6[39m:16:6
+[33m  14 |        /* webpackIgnore: true */
+  15 |        /* @vite-ignore */
+  16 |        "#app-manifest"
+     |        ^
+  17 |      );
+  18 |    } else {[39m[2m (x2)[22m
+
+
+[41m[30m ERROR [39m[49m Pre-transform error: Failed to resolve import "#app-manifest" from "node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/projects/astir-dashboard/node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6[39m:16:6
+[33m  14 |        /* webpackIgnore: true */
+  15 |        /* @vite-ignore */
+  16 |        "#app-manifest"
+     |        ^
+  17 |      );
+  18 |    } else {[39m[2m (x3)[22m
+
+
+[41m[30m ERROR [39m[49m Pre-transform error: Failed to resolve import "#app-manifest" from "node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/projects/astir-dashboard/node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6[39m:16:6
+[33m  14 |        /* webpackIgnore: true */
+  15 |        /* @vite-ignore */
+  16 |        "#app-manifest"
+     |        ^
+  17 |      );
+  18 |    } else {[39m[2m (x4)[22m
+
+
+[41m[30m ERROR [39m[49m Pre-transform error: Failed to resolve import "#app-manifest" from "node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6". Does the file exist?
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mD:/projects/astir-dashboard/node_modules/nuxt/dist/app/composables/manifest.js?v=2b1237c6[39m:16:6
+[33m  14 |        /* webpackIgnore: true */
+  15 |        /* @vite-ignore */
+  16 |        "#app-manifest"
+     |        ^
+  17 |      );
+  18 |    } else {[39m[2m (x5)[22m
+
