@@ -1,0 +1,1 @@
+import{_ as t}from"./DpPAQdxJ.js";import{r as e}from"./DT44cq8x.js";import{l as i,f as r,U as s,G as m}from"./Cp4taY6a.js";import"./Cmp8t-xI.js";import"./D7sgfCZ9.js";import"./BO0A4GVT.js";import"./BoHU865i.js";const k=i({__name:"index",setup(a){const o=e.movies;return(p,c)=>{const n=t;return m(),r(n,{definition:s(o)},null,8,["definition"])}}});export{k as default};

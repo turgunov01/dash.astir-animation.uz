@@ -1,1 +1,0 @@
-import{_ as t}from"./D7j5boFy.js";import{r as e}from"./DT44cq8x.js";import{l as i,f as r,U as s,G as a}from"./B0oP3caF.js";import"./7TR-bhFG.js";import"./BhHXzG6M.js";import"./CGkwk2yn.js";import"./B4H_iM_s.js";const k=i({__name:"index",setup(m){const o=e.series;return(p,c)=>{const n=t;return a(),r(n,{definition:s(o)},null,8,["definition"])}}});export{k as default};

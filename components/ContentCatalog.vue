@@ -265,6 +265,11 @@ function titleOf(row: Record<string, unknown>) {
 }
 
 function posterOf(row: Record<string, unknown>) {
+  if (props.definition.key === 'series' && getResourceValue(row, 'poster_path')) {
+    const id = getItemId(row, props.definition.idKey)
+    if (id !== undefined) return mediaUrl(`/api/v1/series/${encodeURIComponent(String(id))}/poster`)
+  }
+
   const value =
     getResourceValue(row, 'poster_url') ??
     getResourceValue(row, 'posterUrl') ??
