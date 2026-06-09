@@ -32,7 +32,7 @@ export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composab
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
 export { useApi, normalizeApiError } from '../composables/useApi';
 export { getObjectValue, getItemId, unwrapPayload, normalizeList, resolveEndpoint, pickLocalized, pickMediaPath, getResourceValue, formatCellValue, formatDateTime } from '../utils/data';
-export { resourceDefinitions, navigation, pairingTools, billingTools, watchSessionTools } from '../utils/resources';
+export { resourceDefinitions, navigation, pairingTools, billingTools } from '../utils/resources';
 export { transcodeStatusValue, transcodeStatusLabel, transcodeStatusTone, transcodeProgressPercent, transcodeProgressVisible } from '../utils/transcode';
 export { defineLocale, extendLocale } from '../node_modules/@nuxt/ui/dist/runtime/composables/defineLocale';
 export { extractShortcuts, defineShortcuts } from '../node_modules/@nuxt/ui/dist/runtime/composables/defineShortcuts';
@@ -51,4 +51,3 @@ export { useAuthStore } from '../stores/auth';
 export { useUploadQueueStore, UploadTask } from '../stores/uploadQueue';
 export { useColorMode } from '../node_modules/@nuxtjs/color-mode/dist/runtime/composables';
 export { defineStore, acceptHMRUpdate, usePinia, storeToRefs } from '../node_modules/@pinia/nuxt/dist/runtime/composables';
-export { useNuxtDevTools } from '../node_modules/@nuxt/devtools/dist/runtime/use-nuxt-devtools';

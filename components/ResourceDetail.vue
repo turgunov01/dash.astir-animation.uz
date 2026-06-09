@@ -171,6 +171,11 @@ function normalizeBooleanValue(value: unknown): boolean {
           @updated="load"
         />
 
+        <MovieStatsPanel
+          v-if="definition.key === 'movies'"
+          :movie="item"
+        />
+
         <SeriesPosterPanel
           v-if="definition.key === 'series'"
           :series-id="id"
@@ -215,6 +220,11 @@ function normalizeBooleanValue(value: unknown): boolean {
           :movie-id="id"
           :movie="item"
           @updated="load"
+        />
+
+        <ChildBlacklistPanel
+          v-if="definition.key === 'children'"
+          :child-id="id"
         />
 
         <EndpointTool

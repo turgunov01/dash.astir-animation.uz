@@ -29,7 +29,7 @@ const selectedCategoryId = ref('')
 const selectedSeriesId = ref('')
 const releaseYear = ref<number | ''>('')
 const ageRating = ref(0)
-const durationSec = ref(0)
+const durationSec = ref<number | ''>('')
 const seriesKind = ref<'seasons' | 'episodes'>('seasons')
 const seriesActive = ref(true)
 const selectedTagIds = ref<string[]>([])
@@ -128,7 +128,7 @@ function buildMovieMetadata() {
     series_id: selectedSeriesId.value || undefined,
     year: normalizeOptionalInteger(releaseYear.value),
     age_rating: normalizeInteger(ageRating.value, 0),
-    duration_sec: normalizeInteger(durationSec.value, 0),
+    duration_sec: normalizeOptionalInteger(durationSec.value),
     published: published.value,
     is_premium: isPremium.value,
     tag_ids: selectedTagIds.value,

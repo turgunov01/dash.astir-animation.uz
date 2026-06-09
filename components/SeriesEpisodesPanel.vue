@@ -29,9 +29,9 @@ const formError = ref<ApiErrorInfo | null>(null)
 const queuedMessage = ref('')
 const handledUploadTaskIds = new Set<string>()
 
-const episodeUploadEndpoint = '/v1/content/movies/create'
+const episodeEndpoint = computed(() => `/v1/content/movies/${encodeURIComponent(String(props.seriesId))}/series`)
 const episodeUploadActive = computed(() =>
-  uploadQueue.tasks.some((task) => task.endpoint === episodeUploadEndpoint && ['queued', 'uploading', 'processing'].includes(task.status))
+  uploadQueue.tasks.some((task) => task.endpoint === episodeEndpoint.value && ['queued', 'uploading', 'processing'].includes(task.status))
 )
 
 watch(
@@ -56,7 +56,7 @@ watch(
   () => {
     const finished = uploadQueue.tasks.filter(
       (task) =>
-        task.endpoint === episodeUploadEndpoint &&
+        task.endpoint === episodeEndpoint.value &&
         ['success', 'error', 'cancelled'].includes(task.status) &&
         task.completedAt &&
         !handledUploadTaskIds.has(task.id)
@@ -94,8 +94,8 @@ async function loadEpisodes() {
   error.value = null
 
   try {
-    const response = await api.get('/v1/content/movies', { limit: 500 })
-    const rows = normalizeList(response, 'movies').items.filter((row) => isEpisodeOfCurrentSeries(row))
+    const response = await api.get(episodeEndpoint.value, { page: 1, limit: 500 })
+    const rows = normalizeList(response, ['series', 'episodes', 'movies']).items
     episodes.value = sortEpisodes(uniqueEpisodes(rows))
   } catch (requestError) {
     error.value = requestError as ApiErrorInfo
@@ -126,7 +126,7 @@ function submitEpisode() {
   if (posterFile.value) body.append('poster', posterFile.value)
 
   uploadQueue.enqueue({
-    endpoint: episodeUploadEndpoint,
+    endpoint: episodeEndpoint.value,
     method: 'POST',
     body,
     label: `Эпизод: ${pickLocalized(title.value) || videoFile.value.name}`,
@@ -141,8 +141,6 @@ function buildEpisodeMetadata(): Record<string, unknown> {
     title: title.value,
     description: description.value,
     is_premium: isPremium.value,
-    series: [String(props.seriesId)],
-    series_id: String(props.seriesId),
     content_type: 'episode'
   }
 
@@ -184,25 +182,6 @@ function uniqueEpisodes(rows: Record<string, unknown>[]) {
 
 function sortEpisodes(rows: Record<string, unknown>[]) {
   return [...rows].sort((left, right) => episodeOrderValue(left) - episodeOrderValue(right))
-}
-
-function isEpisodeOfCurrentSeries(row: Record<string, unknown>) {
-  const currentId = String(props.seriesId)
-  const directSeriesId =
-    getResourceValue(row, 'series_id') ??
-    getResourceValue(row, 'seriesId')
-
-  if (directSeriesId !== undefined && String(directSeriesId) === currentId) return true
-
-  const series = getResourceValue(row, 'series')
-  if (!Array.isArray(series)) return false
-
-  return series.some((entry) => {
-    if (typeof entry === 'string' || typeof entry === 'number') return String(entry) === currentId
-
-    const id = getItemId(entry) ?? getResourceValue(entry, 'series_id') ?? getResourceValue(entry, 'seriesId')
-    return id !== undefined && String(id) === currentId
-  })
 }
 
 function episodeOrderValue(row: Record<string, unknown>) {

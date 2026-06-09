@@ -16,6 +16,8 @@ type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {},
 interface _GlobalComponents {
   ApiErrorAlert: typeof import("../../components/ApiErrorAlert.vue")['default']
   AppIcon: typeof import("../../components/AppIcon.vue")['default']
+  ChildBlacklistPanel: typeof import("../../components/ChildBlacklistPanel.vue")['default']
+  ClickCheckoutPanel: typeof import("../../components/ClickCheckoutPanel.vue")['default']
   ConfirmDeleteModal: typeof import("../../components/ConfirmDeleteModal.vue")['default']
   ContentCatalog: typeof import("../../components/ContentCatalog.vue")['default']
   ContentCreateModal: typeof import("../../components/ContentCreateModal.vue")['default']
@@ -28,6 +30,7 @@ interface _GlobalComponents {
   MetadataCard: typeof import("../../components/MetadataCard.vue")['default']
   MetricCard: typeof import("../../components/MetricCard.vue")['default']
   MovieMediaPanel: typeof import("../../components/MovieMediaPanel.vue")['default']
+  MovieStatsPanel: typeof import("../../components/MovieStatsPanel.vue")['default']
   MovieTagsPanel: typeof import("../../components/MovieTagsPanel.vue")['default']
   PremiumBadge: typeof import("../../components/PremiumBadge.vue")['default']
   ResourceCreate: typeof import("../../components/ResourceCreate.vue")['default']
@@ -126,6 +129,8 @@ interface _GlobalComponents {
   NuxtIsland: typeof import("../../node_modules/nuxt/dist/app/components/nuxt-island")['default']
   LazyApiErrorAlert: LazyComponent<typeof import("../../components/ApiErrorAlert.vue")['default']>
   LazyAppIcon: LazyComponent<typeof import("../../components/AppIcon.vue")['default']>
+  LazyChildBlacklistPanel: LazyComponent<typeof import("../../components/ChildBlacklistPanel.vue")['default']>
+  LazyClickCheckoutPanel: LazyComponent<typeof import("../../components/ClickCheckoutPanel.vue")['default']>
   LazyConfirmDeleteModal: LazyComponent<typeof import("../../components/ConfirmDeleteModal.vue")['default']>
   LazyContentCatalog: LazyComponent<typeof import("../../components/ContentCatalog.vue")['default']>
   LazyContentCreateModal: LazyComponent<typeof import("../../components/ContentCreateModal.vue")['default']>
@@ -138,6 +143,7 @@ interface _GlobalComponents {
   LazyMetadataCard: LazyComponent<typeof import("../../components/MetadataCard.vue")['default']>
   LazyMetricCard: LazyComponent<typeof import("../../components/MetricCard.vue")['default']>
   LazyMovieMediaPanel: LazyComponent<typeof import("../../components/MovieMediaPanel.vue")['default']>
+  LazyMovieStatsPanel: LazyComponent<typeof import("../../components/MovieStatsPanel.vue")['default']>
   LazyMovieTagsPanel: LazyComponent<typeof import("../../components/MovieTagsPanel.vue")['default']>
   LazyPremiumBadge: LazyComponent<typeof import("../../components/PremiumBadge.vue")['default']>
   LazyResourceCreate: LazyComponent<typeof import("../../components/ResourceCreate.vue")['default']>

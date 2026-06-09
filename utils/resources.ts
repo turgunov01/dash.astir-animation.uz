@@ -118,7 +118,7 @@ const movieFields: ResourceField[] = [
   movieSeriesField,
   { key: 'year', label: 'Год выпуска', type: 'number', placeholder: '2026', nullable: true },
   { key: 'age_rating', label: 'Возрастное ограничение', type: 'number', defaultValue: 0 },
-  { key: 'duration_sec', label: 'Длительность, секунд', type: 'number', defaultValue: 0 },
+  { key: 'duration_sec', label: 'Длительность, секунд', type: 'number', placeholder: 'auto' },
   { key: 'published', label: 'Опубликовано', type: 'checkbox' },
   { key: 'is_premium', label: 'Премиум', type: 'checkbox' },
   { key: 'source', label: 'Видео', type: 'text', send: false },
@@ -139,20 +139,23 @@ const seriesFields: ResourceField[] = [
 
 const tariffFields: ResourceField[] = [
   ...localizedTitleDescription,
+  { key: 'price', label: 'Цена', type: 'text', placeholder: '49000.00' },
+  { key: 'currency', label: 'Валюта', type: 'text', defaultValue: 'UZS' },
   { key: 'is_default', label: 'Тариф по умолчанию', type: 'checkbox' },
   { key: 'can_watch_premium', label: 'Открывает премиум', type: 'checkbox' }
 ]
 
-const tariffSelectField: ResourceField = {
-  key: 'tariffId',
-  label: 'Тариф',
-  type: 'select',
-  required: true,
-  optionsEndpoint: '/v1/tariffs',
-  optionsListKey: 'tariffs',
-  optionLabelKey: 'title',
-  optionValueKey: 'id'
-}
+const tariffTools: EndpointToolDefinition[] = [
+  {
+    title: 'Изменить цену',
+    endpoint: '/v1/tariffs/{id}',
+    method: 'PATCH',
+    fields: [
+      { key: 'price', label: 'Цена', type: 'text', required: true, placeholder: '49000.00' },
+      { key: 'currency', label: 'Валюта', type: 'text', defaultValue: 'UZS' }
+    ]
+  }
+]
 
 const userPlanSelectField: ResourceField = {
   key: 'plan_id',
@@ -450,11 +453,14 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
     columns: [
       { key: 'id', label: 'ID' },
       { key: 'title', label: 'Название', kind: 'localized' },
+      { key: 'price', label: 'Цена' },
+      { key: 'currency', label: 'Валюта' },
       { key: 'is_default', label: 'Default', kind: 'boolean' },
       { key: 'can_watch_premium', label: 'Premium', kind: 'boolean' },
       { key: 'createdAt', label: 'Создан', kind: 'date' }
     ],
-    formFields: tariffFields
+    formFields: tariffFields,
+    tools: tariffTools
   },
   subscriptions: {
     key: 'subscriptions',
@@ -487,48 +493,6 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
       { key: 'createdAt', label: 'Создана', kind: 'date' }
     ],
     filters: [{ key: 'status', label: 'Статус', type: 'select', options: statusOptions }]
-  },
-  cards: {
-    key: 'cards',
-    title: 'Карты',
-    description: 'Карты текущего пользователя: токенизация, default и удаление.',
-    listEndpoint: '/api/v1/cards',
-    createEndpoint: '/api/v1/cards',
-    deleteEndpoint: '/api/v1/cards/{id}',
-    columns: [
-      { key: 'id', label: 'ID' },
-      { key: 'maskedPan', label: 'Маска' },
-      { key: 'brand', label: 'Бренд' },
-      { key: 'isDefault', label: 'Default', kind: 'boolean' },
-      { key: 'createdAt', label: 'Создана', kind: 'date' }
-    ],
-    formFields: [
-      { key: 'token', label: 'Токен карты', type: 'text', required: true },
-      { key: 'isDefault', label: 'Сделать основной', type: 'checkbox' }
-    ],
-    tools: [
-      {
-        title: 'Сделать карту основной',
-        endpoint: '/api/v1/cards/{cardId}/default',
-        method: 'POST',
-        fields: [{ key: 'cardId', label: 'Card ID', type: 'text', required: true }],
-        pathParams: ['cardId']
-      }
-    ]
-  },
-  adminCards: {
-    key: 'admin-cards',
-    title: 'Admin cards',
-    description: 'Админский обзор привязанных карт пользователей.',
-    listEndpoint: '/api/v1/admin/cards',
-    columns: [
-      { key: 'id', label: 'ID' },
-      { key: 'user.email', label: 'Пользователь' },
-      { key: 'maskedPan', label: 'Маска' },
-      { key: 'brand', label: 'Бренд' },
-      { key: 'isDefault', label: 'Default', kind: 'boolean' },
-      { key: 'createdAt', label: 'Создана', kind: 'date' }
-    ]
   },
   supportChats: {
     key: 'support-chats',
@@ -624,12 +588,9 @@ export const navigation = [
     icon: 'i-lucide-credit-card',
     children: [
       { label: 'Транзакции', to: '/billing/transactions', icon: 'i-lucide-receipt' },
-      { label: 'Интеграции', to: '/billing/checkout-tools', icon: 'i-lucide-wrench' },
-      { label: 'Банковские карты', to: '/cards', icon: 'i-lucide-credit-card' },
-      { label: 'Админ карты', to: '/admin/cards', icon: 'i-lucide-shield-check' }
+      { label: 'Интеграции', to: '/billing/checkout-tools', icon: 'i-lucide-wrench' }
     ]
   },
-  { label: 'Сессия просмотра', to: '/watch-sessions', icon: 'i-lucide-clock-3' },
   { label: 'Чаты', to: '/support/chats', icon: 'i-lucide-message-square' },
   { label: 'Отладка API', to: '/debug/api', icon: 'i-lucide-bug' },
   { label: 'FAQs', to: '/faqs', icon: 'i-lucide-circle-help' },
@@ -667,108 +628,18 @@ export const pairingTools: EndpointToolDefinition[] = [
 
 export const billingTools: EndpointToolDefinition[] = [
   {
-    title: 'Checkout',
-    endpoint: '/api/v1/billing/checkout',
-    method: 'POST',
-    fields: [
-      tariffSelectField,
-      { key: 'provider', label: 'Provider', type: 'text', defaultValue: 'click' }
-    ]
-  },
-  {
-    title: 'Checkout deeplink',
-    endpoint: '/api/v1/billing/checkout/deeplink',
-    method: 'POST',
-    fields: [
-      tariffSelectField,
-      { key: 'returnUrl', label: 'Return URL', type: 'text' }
-    ]
-  },
-  {
-    title: 'Recurring charge',
-    endpoint: '/api/v1/billing/charge/recurring',
-    method: 'POST',
-    fields: [
-      { key: 'subscriptionId', label: 'Subscription ID', type: 'text', required: true },
-      { key: 'amount', label: 'Amount', type: 'number', required: true }
-    ]
-  },
-  {
-    title: 'Apple verify',
-    endpoint: '/v1/billing/apple/verify',
-    method: 'POST',
-    fields: [{ key: 'receipt', label: 'Receipt', type: 'textarea', required: true }]
-  },
-  {
-    title: 'Google verify',
-    endpoint: '/v1/billing/google/verify',
-    method: 'POST',
-    fields: [
-      { key: 'purchaseToken', label: 'Purchase token', type: 'textarea', required: true },
-      { key: 'productId', label: 'Product ID', type: 'text', required: true }
-    ]
-  },
-  {
-    title: 'Click card token request',
-    endpoint: '/api/v1/payments/click/card/request',
-    method: 'POST',
-    fields: [
-      { key: 'cardNumber', label: 'Card number', type: 'text', required: true },
-      { key: 'expireDate', label: 'Expire date', type: 'text', required: true }
-    ]
-  },
-  {
-    title: 'Click card verify',
-    endpoint: '/api/v1/payments/click/card/verify',
-    method: 'POST',
-    fields: [
-      { key: 'cardToken', label: 'Card token', type: 'text', required: true },
-      { key: 'code', label: 'Code', type: 'text', required: true }
-    ]
-  },
-  {
-    title: 'Click payment status',
-    endpoint: '/api/v1/payments/click/payment/{paymentId}/status',
+    title: 'Click transaction status',
+    endpoint: '/v1/billing/click/transactions/{transactionId}',
     method: 'GET',
-    fields: [{ key: 'paymentId', label: 'Payment ID', type: 'text', required: true }],
-    pathParams: ['paymentId']
+    description: 'Проверяет pending / succeeded / canceled / failed по transaction.id из checkout response.',
+    fields: [{ key: 'transactionId', label: 'Transaction ID', type: 'text', required: true }],
+    pathParams: ['transactionId']
   },
   {
-    title: 'Click reversal',
-    endpoint: '/api/v1/payments/click/payment/{paymentId}/reversal',
-    method: 'DELETE',
-    fields: [{ key: 'paymentId', label: 'Payment ID', type: 'text', required: true }],
-    pathParams: ['paymentId'],
-    danger: true
-  },
-  {
-    title: 'Click mock paid',
-    description: 'Только для dev-окружения backend.',
-    endpoint: '/api/v1/payments/click/mock-pay',
+    title: 'Current subscription',
+    endpoint: '/v1/billing/subscription/current',
     method: 'GET',
-    danger: true
+    description: 'Проверяет активную подписку после succeeded transaction.'
   }
 ]
 
-export const watchSessionTools: EndpointToolDefinition[] = [
-  {
-    title: 'Start watch session',
-    endpoint: '/v1/watch-sessions/start',
-    method: 'POST',
-    fields: [
-      { key: 'contentId', label: 'Content ID', type: 'text', required: true },
-      { key: 'childId', label: 'Child ID', type: 'text' },
-      { key: 'deviceId', label: 'Device ID', type: 'text' }
-    ]
-  },
-  {
-    title: 'Stop watch session',
-    endpoint: '/v1/watch-sessions/{watchSessionId}/stop',
-    method: 'PATCH',
-    fields: [
-      { key: 'watchSessionId', label: 'Watch session ID', type: 'text', required: true },
-      { key: 'durationSeconds', label: 'Duration seconds', type: 'number' }
-    ],
-    pathParams: ['watchSessionId']
-  }
-]

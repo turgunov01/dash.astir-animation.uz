@@ -1024,6 +1024,62 @@ textarea {
   gap: 8px;
 }
 
+.child-blacklist-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.click-checkout-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1fr) 160px auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.click-result-grid,
+.click-status-tools {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.click-result-row,
+.click-inline-actions,
+.click-status-tools {
+  align-items: center;
+}
+
+.click-result-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.click-result-row > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.click-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.click-status-tools {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.click-status-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
 .series-episode-list {
   margin-top: 20px;
 }
@@ -1393,6 +1449,18 @@ textarea {
 .catalog-total {
   color: var(--muted);
   font-size: 13px;
+}
+
+.catalog-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.catalog-pagination-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .telegram-page {
@@ -2274,8 +2342,22 @@ textarea {
   .content-number-grid,
   .movie-media-panel,
   .series-episode-files,
+  .child-blacklist-form,
+  .click-checkout-form,
+  .click-result-row,
+  .click-status-tools,
+  .click-status-form,
   .localized-row {
     grid-template-columns: 1fr;
+  }
+
+  .catalog-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .catalog-pagination-actions {
+    justify-content: flex-end;
   }
 
   .poster-column {

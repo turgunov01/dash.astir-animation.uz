@@ -57,7 +57,13 @@ function statusIcon(task: UploadTask): string {
 function taskDetail(task: UploadTask): string {
   if (task.status === 'error') return task.error || 'Ошибка загрузки'
   if (task.status === 'cancelled') return 'Задача остановлена'
-  if (task.status === 'success') return `API вернул ${task.responseStatus || '2xx'}`
+  if (task.status === 'success') {
+    const durationSec = getResourceValue(task.response, 'duration_sec')
+    const suffix = durationSec === undefined || durationSec === null || durationSec === ''
+      ? ''
+      : `, duration_sec: ${durationSec}`
+    return `API вернул ${task.responseStatus || '2xx'}${suffix}`
+  }
   if (task.status === 'processing') return 'Файл отправлен, backend обрабатывает ответ'
 
   const parts = [formatBytes(task.uploadedBytes), '/', formatBytes(task.totalBytes)]

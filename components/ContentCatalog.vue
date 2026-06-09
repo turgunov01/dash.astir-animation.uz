@@ -11,6 +11,9 @@ const uploadQueue = useUploadQueueStore()
 
 const items = ref<Record<string, unknown>[]>([])
 const total = ref(0)
+const page = ref(1)
+const limit = 20
+const pagination = ref<Record<string, unknown> | null>(null)
 const loading = ref(false)
 const deleting = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
@@ -32,8 +35,25 @@ const handledUploadTaskIds = new Set<string>()
 const visibleTagsLimit = 3
 
 const isMovieCatalog = computed(() => props.definition.key === 'movies')
+const totalPages = computed(() => {
+  const value = Number(getResourceValue(pagination.value, 'totalPages') ?? getResourceValue(pagination.value, 'total_pages'))
+  if (Number.isFinite(value) && value > 0) return Math.floor(value)
+  return Math.max(1, Math.ceil(total.value / limit))
+})
+const hasNextPage = computed(() => {
+  const value = getResourceValue(pagination.value, 'hasNextPage') ?? getResourceValue(pagination.value, 'has_next_page')
+  return typeof value === 'boolean' ? value : page.value < totalPages.value
+})
+const hasPrevPage = computed(() => {
+  const value = getResourceValue(pagination.value, 'hasPrevPage') ?? getResourceValue(pagination.value, 'has_prev_page')
+  return typeof value === 'boolean' ? value : page.value > 1
+})
 
-watch([searchQuery, minAge, maxAge, likedOnly, selectedCategory, selectedTags], () => load(), { deep: true })
+watch([searchQuery, minAge, maxAge, likedOnly, selectedCategory, selectedTags], () => {
+  if (page.value === 1) void load()
+  else page.value = 1
+}, { deep: true })
+watch(page, () => load())
 watch(
   () => uploadQueue.tasks.map((task) => `${task.id}:${task.status}:${task.completedAt || ''}`).join('|'),
   () => {
@@ -61,6 +81,7 @@ async function load() {
     const response = await api.get(props.definition.listEndpoint, buildListQuery())
     const normalized = normalizeList(response, props.definition.key)
     const scopedItems = filterCatalogItems(normalized.items)
+    pagination.value = extractPagination(response)
     items.value = scopedItems
     total.value = scopedItems.length === normalized.items.length
       ? normalized.total ?? normalized.items.length
@@ -69,6 +90,7 @@ async function load() {
     error.value = requestError as ApiErrorInfo
     items.value = []
     total.value = 0
+    pagination.value = null
   } finally {
     loading.value = false
   }
@@ -77,6 +99,8 @@ async function load() {
 function buildListQuery() {
   const tagsQuery = selectedTags.value.join(',') || undefined
   const query: Record<string, unknown> = {
+    page: page.value,
+    limit,
     min_age: minAge.value,
     max_age: maxAge.value,
     liked: likedOnly.value || undefined
@@ -91,6 +115,12 @@ function buildListQuery() {
   }
 
   return query
+}
+
+function extractPagination(payload: unknown): Record<string, unknown> | null {
+  const unwrapped = unwrapPayload<Record<string, unknown>>(payload, props.definition.key)
+  const value = getResourceValue(unwrapped, 'pagination') ?? getResourceValue(payload, 'pagination')
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null
 }
 
 function toggleTag(tag: string) {
@@ -547,7 +577,19 @@ async function confirmDelete() {
       </table>
     </div>
 
-    <div class="catalog-total">Всего: {{ total }}</div>
+    <div class="catalog-pagination">
+      <span class="catalog-total">Всего: {{ total }} · Страница {{ page }} / {{ totalPages }}</span>
+      <div class="catalog-pagination-actions">
+        <button class="button secondary small-action" type="button" :disabled="loading || !hasPrevPage" @click="page--">
+          <AppIcon name="i-lucide-chevron-left" />
+          Назад
+        </button>
+        <button class="button secondary small-action" type="button" :disabled="loading || !hasNextPage" @click="page++">
+          Вперед
+          <AppIcon name="i-lucide-chevron-right" />
+        </button>
+      </div>
+    </div>
 
     <ConfirmDeleteModal
       :model-value="Boolean(deleteTarget)"

@@ -16,6 +16,8 @@ type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {},
 
 export const ApiErrorAlert: typeof import("../components/ApiErrorAlert.vue")['default']
 export const AppIcon: typeof import("../components/AppIcon.vue")['default']
+export const ChildBlacklistPanel: typeof import("../components/ChildBlacklistPanel.vue")['default']
+export const ClickCheckoutPanel: typeof import("../components/ClickCheckoutPanel.vue")['default']
 export const ConfirmDeleteModal: typeof import("../components/ConfirmDeleteModal.vue")['default']
 export const ContentCatalog: typeof import("../components/ContentCatalog.vue")['default']
 export const ContentCreateModal: typeof import("../components/ContentCreateModal.vue")['default']
@@ -28,6 +30,7 @@ export const LocalizedTextFields: typeof import("../components/LocalizedTextFiel
 export const MetadataCard: typeof import("../components/MetadataCard.vue")['default']
 export const MetricCard: typeof import("../components/MetricCard.vue")['default']
 export const MovieMediaPanel: typeof import("../components/MovieMediaPanel.vue")['default']
+export const MovieStatsPanel: typeof import("../components/MovieStatsPanel.vue")['default']
 export const MovieTagsPanel: typeof import("../components/MovieTagsPanel.vue")['default']
 export const PremiumBadge: typeof import("../components/PremiumBadge.vue")['default']
 export const ResourceCreate: typeof import("../components/ResourceCreate.vue")['default']
@@ -126,6 +129,8 @@ export const Body: typeof import("../node_modules/nuxt/dist/head/runtime/compone
 export const NuxtIsland: typeof import("../node_modules/nuxt/dist/app/components/nuxt-island")['default']
 export const LazyApiErrorAlert: LazyComponent<typeof import("../components/ApiErrorAlert.vue")['default']>
 export const LazyAppIcon: LazyComponent<typeof import("../components/AppIcon.vue")['default']>
+export const LazyChildBlacklistPanel: LazyComponent<typeof import("../components/ChildBlacklistPanel.vue")['default']>
+export const LazyClickCheckoutPanel: LazyComponent<typeof import("../components/ClickCheckoutPanel.vue")['default']>
 export const LazyConfirmDeleteModal: LazyComponent<typeof import("../components/ConfirmDeleteModal.vue")['default']>
 export const LazyContentCatalog: LazyComponent<typeof import("../components/ContentCatalog.vue")['default']>
 export const LazyContentCreateModal: LazyComponent<typeof import("../components/ContentCreateModal.vue")['default']>
@@ -138,6 +143,7 @@ export const LazyLocalizedTextFields: LazyComponent<typeof import("../components
 export const LazyMetadataCard: LazyComponent<typeof import("../components/MetadataCard.vue")['default']>
 export const LazyMetricCard: LazyComponent<typeof import("../components/MetricCard.vue")['default']>
 export const LazyMovieMediaPanel: LazyComponent<typeof import("../components/MovieMediaPanel.vue")['default']>
+export const LazyMovieStatsPanel: LazyComponent<typeof import("../components/MovieStatsPanel.vue")['default']>
 export const LazyMovieTagsPanel: LazyComponent<typeof import("../components/MovieTagsPanel.vue")['default']>
 export const LazyPremiumBadge: LazyComponent<typeof import("../components/PremiumBadge.vue")['default']>
 export const LazyResourceCreate: LazyComponent<typeof import("../components/ResourceCreate.vue")['default']>

@@ -8,14 +8,18 @@ definePageMeta({ roles: ['admin', 'super_admin'] })
   <section>
     <div class="page-header">
       <div>
-        <h1 class="page-title">Billing and checkout tools</h1>
+        <h1 class="page-title">Click billing</h1>
         <p class="page-description">
-          Операторские и developer-only формы для checkout, recurring charge, Apple/Google verification и Click tools. Webhook endpoints не вынесены как обычные действия.
+          Checkout создает backend. Админка не отправляет amount, не считает подписи и не вызывает Click prepare/complete.
         </p>
       </div>
     </div>
 
-    <div class="grid grid-2">
+    <div class="grid">
+      <ClickCheckoutPanel />
+    </div>
+
+    <div class="grid grid-2" style="margin-top: 16px;">
       <EndpointTool v-for="tool in billingTools" :key="tool.title" :tool="tool" />
     </div>
   </section>
