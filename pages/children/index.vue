@@ -6,5 +6,5 @@ const definition = resourceDefinitions.children
 </script>
 
 <template>
-  <ResourceTable :definition="definition" />
+  <AdminChildrenTable :definition="definition" />
 </template>
