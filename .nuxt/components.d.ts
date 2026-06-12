@@ -14,6 +14,7 @@ type HydrationStrategies = {
 type LazyComponent<T> = DefineComponent<HydrationStrategies, {}, {}, {}, {}, {}, {}, { hydrated: () => void }> & T
 
 
+export const AdminChildDetail: typeof import("../components/AdminChildDetail.vue")['default']
 export const AdminChildrenTable: typeof import("../components/AdminChildrenTable.vue")['default']
 export const ApiErrorAlert: typeof import("../components/ApiErrorAlert.vue")['default']
 export const AppIcon: typeof import("../components/AppIcon.vue")['default']
@@ -128,6 +129,7 @@ export const Head: typeof import("../node_modules/nuxt/dist/head/runtime/compone
 export const Html: typeof import("../node_modules/nuxt/dist/head/runtime/components")['Html']
 export const Body: typeof import("../node_modules/nuxt/dist/head/runtime/components")['Body']
 export const NuxtIsland: typeof import("../node_modules/nuxt/dist/app/components/nuxt-island")['default']
+export const LazyAdminChildDetail: LazyComponent<typeof import("../components/AdminChildDetail.vue")['default']>
 export const LazyAdminChildrenTable: LazyComponent<typeof import("../components/AdminChildrenTable.vue")['default']>
 export const LazyApiErrorAlert: LazyComponent<typeof import("../components/ApiErrorAlert.vue")['default']>
 export const LazyAppIcon: LazyComponent<typeof import("../components/AppIcon.vue")['default']>

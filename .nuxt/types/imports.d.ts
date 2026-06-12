@@ -72,6 +72,7 @@ declare global {
   const nextTick: typeof import('../../node_modules/vue').nextTick
   const normalizeApiError: typeof import('../../composables/useApi').normalizeApiError
   const normalizeList: typeof import('../../utils/data').normalizeList
+  const normalizeMediaPath: typeof import('../../utils/data').normalizeMediaPath
   const onActivated: typeof import('../../node_modules/vue').onActivated
   const onBeforeMount: typeof import('../../node_modules/vue').onBeforeMount
   const onBeforeRouteLeave: typeof import('../../node_modules/vue-router').onBeforeRouteLeave
@@ -330,6 +331,7 @@ declare module 'vue' {
     readonly nextTick: UnwrapRef<typeof import('../../node_modules/vue')['nextTick']>
     readonly normalizeApiError: UnwrapRef<typeof import('../../composables/useApi')['normalizeApiError']>
     readonly normalizeList: UnwrapRef<typeof import('../../utils/data')['normalizeList']>
+    readonly normalizeMediaPath: UnwrapRef<typeof import('../../utils/data')['normalizeMediaPath']>
     readonly onActivated: UnwrapRef<typeof import('../../node_modules/vue')['onActivated']>
     readonly onBeforeMount: UnwrapRef<typeof import('../../node_modules/vue')['onBeforeMount']>
     readonly onBeforeRouteLeave: UnwrapRef<typeof import('../../node_modules/vue-router')['onBeforeRouteLeave']>

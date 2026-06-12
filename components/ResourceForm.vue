@@ -329,11 +329,13 @@ function currentMediaSourceUrl(field: ResourceField): string {
   if (!isMediaSourceField(field)) return ''
 
   const value =
-    getResourceValue(props.initialValue, field.key) ??
-    getResourceValue(props.initialValue, 'video_url') ??
-    getResourceValue(props.initialValue, 'videoUrl') ??
     getResourceValue(props.initialValue, 'playback.auto_url') ??
     getResourceValue(props.initialValue, 'playback.hls_url') ??
+    getResourceValue(props.initialValue, 'video_url') ??
+    getResourceValue(props.initialValue, 'videoUrl') ??
+    getResourceValue(props.initialValue, field.key) ??
+    getResourceValue(props.initialValue, 'source_path') ??
+    getResourceValue(props.initialValue, 'sourcePath') ??
     model[field.key]
   const path = pickMediaPath(value)
 
@@ -341,9 +343,9 @@ function currentMediaSourceUrl(field: ResourceField): string {
 }
 
 function mediaUrl(value: unknown): string {
-  const source = String(value || '')
+  const source = normalizeMediaPath(value)
   if (!source) return ''
-  if (/^https?:\/\//i.test(source)) return source
+  if (/^(https?:|data:|blob:)/i.test(source)) return source
 
   const baseUrl = String(config.public.apiBaseUrl || '').replace(/\/$/, '')
   return `${baseUrl}/${source.replace(/^\//, '')}`

@@ -160,7 +160,13 @@ async function confirmDelete() {
 
 function rowRoute(row: Record<string, unknown>) {
   const id = getItemId(row, props.definition.idKey)
-  return props.definition.detailRoute && id !== undefined ? `${props.definition.detailRoute}/${id}` : ''
+  if (!props.definition.detailRoute || id === undefined) return ''
+
+  const parentId = getResourceValue(row, 'parent_id') ?? getResourceValue(row, 'parentId') ?? getResourceValue(row, 'parent.id')
+  const path = `${props.definition.detailRoute}/${encodeURIComponent(String(id))}`
+  return parentId === undefined || parentId === null || parentId === ''
+    ? path
+    : `${path}?parentId=${encodeURIComponent(String(parentId))}`
 }
 
 function parentRoute(row: Record<string, unknown>) {

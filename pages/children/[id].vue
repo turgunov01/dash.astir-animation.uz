@@ -7,5 +7,5 @@ const definition = resourceDefinitions.children
 </script>
 
 <template>
-  <ResourceDetail :definition="definition" :id="String(route.params.id)" />
+  <AdminChildDetail :definition="definition" :id="String(route.params.id)" />
 </template>

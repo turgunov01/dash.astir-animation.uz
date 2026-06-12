@@ -28,16 +28,20 @@ const error = ref<ApiErrorInfo | null>(null)
 const formError = ref<ApiErrorInfo | null>(null)
 const queuedMessage = ref('')
 const handledUploadTaskIds = new Set<string>()
+const episodeUploadTaskIds = new Set<string>()
 
-const episodeEndpoint = computed(() => `/v1/content/movies/${encodeURIComponent(String(props.seriesId))}/series`)
+const episodeListEndpoint = computed(() => `/api/v1/series/${encodeURIComponent(String(props.seriesId))}/episodes`)
+const episodeUploadEndpoint = '/v1/content/movies/create'
 const episodeUploadActive = computed(() =>
-  uploadQueue.tasks.some((task) => task.endpoint === episodeEndpoint.value && ['queued', 'uploading', 'processing'].includes(task.status))
+  uploadQueue.tasks.some((task) => episodeUploadTaskIds.has(task.id) && ['queued', 'uploading', 'processing'].includes(task.status))
 )
 
 watch(
   () => props.seriesId,
   () => {
     episodes.value = []
+    handledUploadTaskIds.clear()
+    episodeUploadTaskIds.clear()
     resetForm()
     void loadEpisodes()
   }
@@ -56,7 +60,7 @@ watch(
   () => {
     const finished = uploadQueue.tasks.filter(
       (task) =>
-        task.endpoint === episodeEndpoint.value &&
+        episodeUploadTaskIds.has(task.id) &&
         ['success', 'error', 'cancelled'].includes(task.status) &&
         task.completedAt &&
         !handledUploadTaskIds.has(task.id)
@@ -94,7 +98,7 @@ async function loadEpisodes() {
   error.value = null
 
   try {
-    const response = await api.get(episodeEndpoint.value, { page: 1, limit: 500 })
+    const response = await api.get(episodeListEndpoint.value, { page: 1, limit: 500 })
     const rows = normalizeList(response, ['series', 'episodes', 'movies']).items
     episodes.value = sortEpisodes(uniqueEpisodes(rows))
   } catch (requestError) {
@@ -125,13 +129,14 @@ function submitEpisode() {
   body.append('video', videoFile.value)
   if (posterFile.value) body.append('poster', posterFile.value)
 
-  uploadQueue.enqueue({
-    endpoint: episodeEndpoint.value,
+  const { task } = uploadQueue.enqueue({
+    endpoint: episodeUploadEndpoint,
     method: 'POST',
     body,
     label: `Эпизод: ${pickLocalized(title.value) || videoFile.value.name}`,
     resultRouteBase: '/content/movies'
   })
+  episodeUploadTaskIds.add(task.id)
 
   queuedMessage.value = 'Эпизод поставлен в очередь загрузки.'
 }
@@ -141,7 +146,8 @@ function buildEpisodeMetadata(): Record<string, unknown> {
     title: title.value,
     description: description.value,
     is_premium: isPremium.value,
-    content_type: 'episode'
+    content_type: 'episode',
+    series_id: String(props.seriesId)
   }
 
   const season = normalizePositiveInteger(seasonNumber.value)
@@ -271,9 +277,9 @@ function episodeVideoUrl(row: Record<string, unknown>) {
 }
 
 function mediaUrl(value: unknown): string {
-  const source = String(value || '')
+  const source = normalizeMediaPath(value)
   if (!source) return ''
-  if (/^https?:\/\//i.test(source)) return source
+  if (/^(https?:|data:|blob:)/i.test(source)) return source
 
   const baseUrl = String(config.public.apiBaseUrl || '').replace(/\/$/, '')
   return `${baseUrl}/${source.replace(/^\//, '')}`

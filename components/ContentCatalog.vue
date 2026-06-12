@@ -9,7 +9,8 @@ const api = useApi()
 const config = useRuntimeConfig()
 const uploadQueue = useUploadQueueStore()
 
-const items = ref<Record<string, unknown>[]>([])
+const items = ref<Record<string, unknown>[]>([]);
+
 const total = ref(0)
 const page = ref(1)
 const limit = 20
@@ -78,9 +79,9 @@ async function load() {
   error.value = null
 
   try {
-    const response = await api.get(props.definition.listEndpoint, buildListQuery())
+    const response = await api.get(props.definition.listEndpoint, /* buildListQuery() */)
     const normalized = normalizeList(response, props.definition.key)
-    const scopedItems = filterCatalogItems(normalized.items)
+    const scopedItems = await filterCatalogItems(normalized.items)
     pagination.value = extractPagination(response)
     items.value = scopedItems
     total.value = scopedItems.length === normalized.items.length
@@ -94,23 +95,22 @@ async function load() {
   } finally {
     loading.value = false
   }
+
 }
 
 function buildListQuery() {
   const tagsQuery = selectedTags.value.join(',') || undefined
   const query: Record<string, unknown> = {
     page: page.value,
-    limit,
-    min_age: minAge.value,
-    max_age: maxAge.value,
-    liked: likedOnly.value || undefined
+    limit
   }
 
   if (isMovieCatalog.value) {
     query.q = searchQuery.value.trim() || undefined
-    query.category = selectedCategory.value || undefined
-    query.tags = tagsQuery
-  } else {
+    query.min_age = minAge.value
+    query.max_age = maxAge.value
+    query.liked = likedOnly.value || undefined
+    query.category_id = selectedCategory.value || undefined
     query.tag_ids = tagsQuery
   }
 
@@ -169,6 +169,8 @@ async function loadCategoryOptions() {
 }
 
 async function loadTagOptions() {
+  if (!isMovieCatalog.value) return
+
   tagsLoading.value = true
   tagsLoadError.value = ''
 
@@ -314,9 +316,9 @@ function posterOf(row: Record<string, unknown>) {
 }
 
 function mediaUrl(value: unknown): string {
-  const source = String(value || '')
+  const source = normalizeMediaPath(value)
   if (!source) return ''
-  if (/^https?:\/\//i.test(source)) return source
+  if (/^(https?:|data:|blob:)/i.test(source)) return source
 
   const baseUrl = String(config.public.apiBaseUrl || '').replace(/\/$/, '')
   return `${baseUrl}/${source.replace(/^\//, '')}`
@@ -439,7 +441,7 @@ async function confirmDelete() {
       </NuxtLink>
     </div>
 
-    <div class="catalog-filter">
+    <div v-if="isMovieCatalog" class="catalog-filter">
       <strong>Фильтр</strong>
       <div class="catalog-filter-row">
         <label v-if="isMovieCatalog" class="compact-field catalog-search-field">
@@ -467,24 +469,19 @@ async function confirmDelete() {
           <input v-model="likedOnly" type="checkbox">
           <span>Только понравившиеся</span>
         </label>
-        <button v-if="isMovieCatalog" class="button secondary small-action catalog-filter-reset" type="button" @click="resetFilters">
+        <button v-if="isMovieCatalog" class="button secondary small-action catalog-filter-reset" type="button"
+          @click="resetFilters">
           <AppIcon name="i-lucide-x" />
           Сбросить
         </button>
       </div>
       <small v-if="categoriesLoadError" class="field-hint">{{ categoriesLoadError }}</small>
-      <div class="field">
+      <div v-if="isMovieCatalog" class="field">
         <span class="content-field-label">По тегам</span>
         <div v-if="tagsLoading" class="field-hint">Загрузка тегов...</div>
         <div v-else-if="tagOptions.length" class="tag-list">
-          <button
-            v-for="tag in tagOptions"
-            :key="tag.id"
-            class="tag-chip"
-            :class="{ active: selectedTags.includes(tag.id) }"
-            type="button"
-            @click="toggleTag(tag.id)"
-          >
+          <button v-for="tag in tagOptions" :key="tag.id" class="tag-chip"
+            :class="{ active: selectedTags.includes(tag.id) }" type="button" @click="toggleTag(tag.id)">
             {{ tag.label }}
           </button>
         </div>
@@ -517,7 +514,9 @@ async function confirmDelete() {
           <tr v-for="row in items" v-else :key="rowKey(row)">
             <td class="poster-cell">
               <img v-if="posterOf(row)" :src="posterOf(row)" alt="">
-              <div v-else class="poster-fallback"><AppIcon name="i-lucide-image" /></div>
+              <div v-else class="poster-fallback">
+                <AppIcon name="i-lucide-image" />
+              </div>
             </td>
             <td>
               <strong class="catalog-title">{{ titleOf(row) }}</strong>
@@ -526,11 +525,8 @@ async function confirmDelete() {
             <td>
               <div class="table-tags">
                 <span v-for="tag in visibleTagsOf(row)" :key="tag" class="table-tag">{{ tag }}</span>
-                <span
-                  v-if="hiddenTagsOf(row).length"
-                  class="table-tag table-tag-more"
-                  :title="hiddenTagsOf(row).join(', ')"
-                >
+                <span v-if="hiddenTagsOf(row).length" class="table-tag table-tag-more"
+                  :title="hiddenTagsOf(row).join(', ')">
                   ...
                 </span>
                 <span v-if="!tagsOf(row).length">—</span>
@@ -545,19 +541,16 @@ async function confirmDelete() {
             </td>
             <td>
               <div class="catalog-actions">
-                <NuxtLink class="button secondary small-action" :class="{ disabled: !rowRoute(row) }" :to="rowRoute(row) || '#'" title="Просмотр">
+                <NuxtLink class="button secondary small-action" :class="{ disabled: !rowRoute(row) }"
+                  :to="rowRoute(row) || '#'" title="Просмотр">
                   <AppIcon name="i-lucide-play" />
                   Просмотр
                 </NuxtLink>
-                <input
-                  v-if="canUploadFileFromCatalog()"
-                  :ref="(el) => { fileInputs[rowKey(row)] = el as HTMLInputElement | null }"
-                  hidden
-                  type="file"
-                  accept="video/*"
-                  @change="uploadFile(row, $event)"
-                >
-                <button v-if="canUploadFileFromCatalog()" class="button secondary small-action" type="button" @click="triggerFile(row)">
+                <input v-if="canUploadFileFromCatalog()"
+                  :ref="(el) => { fileInputs[rowKey(row)] = el as HTMLInputElement | null }" hidden type="file"
+                  accept="video/*" @change="uploadFile(row, $event)">
+                <button v-if="canUploadFileFromCatalog()" class="button secondary small-action" type="button"
+                  @click="triggerFile(row)">
                   <AppIcon name="i-lucide-upload-cloud" />
                   Загрузить файл
                 </button>
@@ -591,11 +584,7 @@ async function confirmDelete() {
       </div>
     </div>
 
-    <ConfirmDeleteModal
-      :model-value="Boolean(deleteTarget)"
-      :loading="deleting"
-      @update:model-value="deleteTarget = null"
-      @confirm="confirmDelete"
-    />
+    <ConfirmDeleteModal :model-value="Boolean(deleteTarget)" :loading="deleting"
+      @update:model-value="deleteTarget = null" @confirm="confirmDelete" />
   </section>
 </template>

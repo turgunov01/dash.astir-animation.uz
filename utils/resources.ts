@@ -162,8 +162,9 @@ const userPlanSelectField: ResourceField = {
   label: 'Тариф',
   type: 'select',
   required: true,
-  optionsEndpoint: '/api/v1/plans',
-  optionLabelKey: 'name',
+  optionsEndpoint: '/v1/tariffs',
+  optionsListKey: 'tariffs',
+  optionLabelKey: 'title',
   optionValueKey: 'id'
 }
 

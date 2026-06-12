@@ -145,7 +145,15 @@ export function pickMediaPath(value: unknown): string {
       'url',
       'src',
       'path',
+      'auto_url',
+      'autoUrl',
+      'hls_url',
+      'hlsUrl',
       'source',
+      'source_path',
+      'sourcePath',
+      'storage_path',
+      'storagePath',
       'poster_url',
       'posterUrl',
       'image_url',
@@ -161,6 +169,21 @@ export function pickMediaPath(value: unknown): string {
   }
 
   return ''
+}
+
+export function normalizeMediaPath(value: unknown): string {
+  const source = String(value || '').trim()
+  if (!source) return ''
+  if (/^(https?:|data:|blob:)/i.test(source)) return source
+
+  const normalized = source.replace(/\\/g, '/')
+  if (/^\/?media\//i.test(normalized)) return `/${normalized.replace(/^\/+/, '')}`
+  if (/^\/?(api|v1)\//i.test(normalized)) return `/${normalized.replace(/^\/+/, '')}`
+
+  const storageMatch = normalized.match(/(?:^|\/)(uploads|hls)\/.+$/i)
+  if (storageMatch) return `/media/${storageMatch[0].replace(/^\/+/, '')}`
+
+  return normalized
 }
 
 export function getResourceValue(source: unknown, path: string): unknown {

@@ -31,7 +31,7 @@ export { setInterval } from '#app/compat/interval';
 export { definePageMeta } from '../node_modules/nuxt/dist/pages/runtime/composables';
 export { defineLazyHydrationComponent } from '#app/composables/lazy-hydration';
 export { useApi, normalizeApiError } from '../composables/useApi';
-export { getObjectValue, getItemId, unwrapPayload, normalizeList, resolveEndpoint, pickLocalized, pickMediaPath, getResourceValue, formatCellValue, formatDateTime } from '../utils/data';
+export { getObjectValue, getItemId, unwrapPayload, normalizeList, resolveEndpoint, pickLocalized, pickMediaPath, normalizeMediaPath, getResourceValue, formatCellValue, formatDateTime } from '../utils/data';
 export { resourceDefinitions, navigation, pairingTools, billingTools } from '../utils/resources';
 export { transcodeStatusValue, transcodeStatusLabel, transcodeStatusTone, transcodeProgressPercent, transcodeProgressVisible } from '../utils/transcode';
 export { defineLocale, extendLocale } from '../node_modules/@nuxt/ui/dist/runtime/composables/defineLocale';
