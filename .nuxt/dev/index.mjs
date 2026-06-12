@@ -2421,16 +2421,16 @@ _wH6JrtIxmaSoA8lCPWFnE9z4lQeXW6H5z3l5aymEQw
 const assets = {
   "/index.mjs": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"1ca43-VGoWwZUBe1e2+L68I2cixshA/ps\"",
-    "mtime": "2026-06-12T11:26:20.592Z",
-    "size": 117315,
+    "etag": "\"1c8ab-H9bUFiisK2wZd+3Ftaorb7ddCLo\"",
+    "mtime": "2026-06-12T14:55:15.388Z",
+    "size": 116907,
     "path": "index.mjs"
   },
   "/index.mjs.map": {
     "type": "application/json",
-    "etag": "\"6d16a-Aw9qtzzZK/5vHMYAPDT/oZ6T1Z8\"",
-    "mtime": "2026-06-12T11:26:20.592Z",
-    "size": 446826,
+    "etag": "\"6d15b-eFF37LdEqE6n8wBqDLL/bTW5i2Y\"",
+    "mtime": "2026-06-12T14:55:15.385Z",
+    "size": 446811,
     "path": "index.mjs.map"
   }
 };

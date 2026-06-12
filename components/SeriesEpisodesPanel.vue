@@ -27,6 +27,8 @@ const episodes = ref<Record<string, unknown>[]>([])
 const error = ref<ApiErrorInfo | null>(null)
 const formError = ref<ApiErrorInfo | null>(null)
 const queuedMessage = ref('')
+const deletingEpisode = ref(false)
+const deleteTarget = ref<Record<string, unknown> | null>(null)
 const handledUploadTaskIds = new Set<string>()
 const episodeUploadTaskIds = new Set<string>()
 
@@ -35,6 +37,12 @@ const episodeUploadEndpoint = '/v1/content/movies/create'
 const episodeUploadActive = computed(() =>
   uploadQueue.tasks.some((task) => episodeUploadTaskIds.has(task.id) && ['queued', 'uploading', 'processing'].includes(task.status))
 )
+const deleteEpisodeMessage = computed(() => {
+  const title = deleteTarget.value ? episodeTitle(deleteTarget.value) : ''
+  return title
+    ? `Эпизод «${title}» будет удалён без возможности восстановления.`
+    : 'Эпизод будет удалён без возможности восстановления.'
+})
 
 watch(
   () => props.seriesId,
@@ -42,6 +50,7 @@ watch(
     episodes.value = []
     handledUploadTaskIds.clear()
     episodeUploadTaskIds.clear()
+    deleteTarget.value = null
     resetForm()
     void loadEpisodes()
   }
@@ -236,6 +245,31 @@ function episodeContentRoute(row: Record<string, unknown>) {
   return id === undefined ? '' : `/content/movies/${encodeURIComponent(String(id))}`
 }
 
+function canDeleteEpisode(row: Record<string, unknown>) {
+  return getItemId(row) !== undefined
+}
+
+async function confirmDeleteEpisode() {
+  if (!deleteTarget.value) return
+
+  const id = getItemId(deleteTarget.value)
+  if (id === undefined) return
+
+  deletingEpisode.value = true
+  error.value = null
+
+  try {
+    await api.remove(resolveEndpoint('/v1/content/movies/{id}', { id, ...deleteTarget.value }))
+    deleteTarget.value = null
+    await loadEpisodes()
+    emit('updated')
+  } catch (requestError) {
+    error.value = requestError as ApiErrorInfo
+  } finally {
+    deletingEpisode.value = false
+  }
+}
+
 function isContentMovieEpisode(row: Record<string, unknown>) {
   return Boolean(
     getResourceValue(row, 'playback') ||
@@ -386,6 +420,7 @@ function normalizeBoolean(value: unknown): boolean {
                   <th>Контент</th>
                   <th>Видео</th>
                   <th>Создан</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -413,11 +448,33 @@ function normalizeBoolean(value: unknown): boolean {
                     <span v-else>—</span>
                   </td>
                   <td><DateTimeCell :value="getResourceValue(episode, 'createdAt') || getResourceValue(episode, 'created_at')" /></td>
+                  <td>
+                    <button
+                      v-if="canDeleteEpisode(episode)"
+                      class="icon-link danger-link"
+                      type="button"
+                      title="Удалить"
+                      :disabled="deletingEpisode"
+                      @click="deleteTarget = episode"
+                    >
+                      <AppIcon name="i-lucide-trash-2" />
+                    </button>
+                    <span v-else>—</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
         </div>
       </div>
     </div>
+
+    <ConfirmDeleteModal
+      :model-value="Boolean(deleteTarget)"
+      title="Удалить эпизод?"
+      :message="deleteEpisodeMessage"
+      :loading="deletingEpisode"
+      @update:model-value="deleteTarget = null"
+      @confirm="confirmDeleteEpisode"
+    />
   </div>
 </template>
