@@ -133,6 +133,7 @@ const seriesKindOptions = [
 const seriesFields: ResourceField[] = [
   { key: 'title', label: 'Название', type: 'localized', required: true },
   { key: 'description', label: 'Описание', type: 'localized', rows: 4 },
+  movieCategoryField,
   { key: 'kind', label: 'Тип сериала', type: 'select', options: seriesKindOptions, defaultValue: 'seasons' },
   { key: 'active', label: 'Активен', type: 'checkbox', defaultValue: true }
 ]

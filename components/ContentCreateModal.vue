@@ -50,7 +50,7 @@ const posterPreview = computed(() => (poster.value && process.client ? URL.creat
 const pageTitle = computed(() => (props.contentType === 'series' ? 'Новый сериал' : 'Новый фильм'))
 
 onMounted(() => {
-  if (props.contentType === 'movie') void loadMovieReferenceOptions()
+  if (props.contentType === 'movie' || props.contentType === 'series') void loadContentReferenceOptions()
 })
 
 async function submit() {
@@ -114,6 +114,7 @@ function buildSeriesBody() {
   return {
     title: title.value,
     description: description.value,
+    category_id: selectedCategoryId.value || undefined,
     kind: seriesKind.value,
     active: seriesActive.value
   }
@@ -143,13 +144,13 @@ function getCreatedId(payload: unknown) {
   return getItemId(data) || getItemId(data?.movie) || getItemId(data?.content) || getItemId(data?.series)
 }
 
-async function loadMovieReferenceOptions() {
+async function loadContentReferenceOptions() {
   referenceLoading.value = true
   referenceLoadError.value = ''
 
   const [categoriesResult, seriesResult] = await Promise.allSettled([
     api.get('/v1/content/categories', { limit: 100 }),
-    api.get('/api/v1/series', { limit: 100 })
+    props.contentType === 'movie' ? api.get('/api/v1/series', { limit: 100 }) : Promise.resolve(null)
   ])
 
   if (categoriesResult.status === 'fulfilled') {
@@ -160,7 +161,7 @@ async function loadMovieReferenceOptions() {
     categoryOptions.value = []
   }
 
-  if (seriesResult.status === 'fulfilled') {
+  if (props.contentType === 'movie' && seriesResult.status === 'fulfilled') {
     seriesOptions.value = normalizeList(seriesResult.value, 'series').items
       .map(toSelectOption)
       .filter((option): option is ContentSelectOption => Boolean(option))
@@ -168,8 +169,10 @@ async function loadMovieReferenceOptions() {
     seriesOptions.value = []
   }
 
-  if (categoriesResult.status === 'rejected' || seriesResult.status === 'rejected') {
-    referenceLoadError.value = 'Не удалось загрузить категории или сериалы.'
+  if (categoriesResult.status === 'rejected' || (props.contentType === 'movie' && seriesResult.status === 'rejected')) {
+    referenceLoadError.value = props.contentType === 'movie'
+      ? 'Не удалось загрузить категории или сериалы.'
+      : 'Не удалось загрузить категории.'
   }
 
   referenceLoading.value = false
@@ -307,19 +310,33 @@ function normalizeOptionalInteger(value: unknown): number | undefined {
             <span>Премиум</span>
           </label>
 
-          <div v-if="contentType === 'series'" class="content-number-grid">
-            <label class="field">
-              <span class="content-field-label">Тип сериала</span>
-              <select v-model="seriesKind" class="select">
-                <option value="seasons">Сезоны</option>
-                <option value="episodes">Эпизоды</option>
-              </select>
-            </label>
-            <label class="switch-row">
-              <input v-model="seriesActive" type="checkbox">
-              <span>Активен</span>
-            </label>
-          </div>
+          <template v-if="contentType === 'series'">
+            <small v-if="referenceLoading" class="field-hint">Загрузка справочников...</small>
+            <small v-else-if="referenceLoadError" class="field-hint">{{ referenceLoadError }}</small>
+
+            <div class="content-number-grid">
+              <label class="field">
+                <span class="content-field-label">Категория</span>
+                <select v-model="selectedCategoryId" class="select" :disabled="referenceLoading">
+                  <option value="">Не выбрано</option>
+                  <option v-for="option in categoryOptions" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="content-field-label">Тип сериала</span>
+                <select v-model="seriesKind" class="select">
+                  <option value="seasons">Сезоны</option>
+                  <option value="episodes">Эпизоды</option>
+                </select>
+              </label>
+              <label class="switch-row">
+                <input v-model="seriesActive" type="checkbox">
+                <span>Активен</span>
+              </label>
+            </div>
+          </template>
 
           <div v-if="contentType === 'movie'" class="field">
             <span class="content-field-label">Теги</span>
