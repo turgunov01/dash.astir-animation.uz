@@ -149,7 +149,7 @@ async function loadContentReferenceOptions() {
   referenceLoadError.value = ''
 
   const [categoriesResult, seriesResult] = await Promise.allSettled([
-    api.get('/v1/content/categories', { limit: 100 }),
+    api.get(props.contentType === 'series' ? '/api/v1/categories' : '/v1/content/categories', { limit: 100 }),
     props.contentType === 'movie' ? api.get('/api/v1/series', { limit: 100 }) : Promise.resolve(null)
   ])
 

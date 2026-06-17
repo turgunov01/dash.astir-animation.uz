@@ -258,6 +258,10 @@ function parseFieldValue(field: ResourceField): unknown {
     return null
   }
 
+  if (field.type === 'localized') {
+    return normalizeLocalizedFieldValue(value)
+  }
+
   if (field.key === 'series') {
     return value ? [value] : []
   }
@@ -277,6 +281,15 @@ function parseFieldValue(field: ResourceField): unknown {
   }
 
   return value
+}
+
+function normalizeLocalizedFieldValue(value: unknown) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return value
+  }
+
+  const text = String(value || '')
+  return { ru: text, uz: text, en: text }
 }
 
 function optionsFor(field: ResourceField) {

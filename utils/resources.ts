@@ -101,6 +101,16 @@ const movieCategoryField: ResourceField = {
   nullable: true
 }
 
+const legacyCategoryField: ResourceField = {
+  key: 'category_id',
+  label: 'Категория',
+  type: 'select',
+  optionsEndpoint: '/api/v1/categories',
+  optionLabelKey: 'name',
+  optionValueKey: 'id',
+  nullable: true
+}
+
 const movieSeriesField: ResourceField = {
   key: 'series_id',
   label: 'Сериал',
@@ -133,7 +143,7 @@ const seriesKindOptions = [
 const seriesFields: ResourceField[] = [
   { key: 'title', label: 'Название', type: 'localized', required: true },
   { key: 'description', label: 'Описание', type: 'localized', rows: 4 },
-  movieCategoryField,
+  legacyCategoryField,
   { key: 'kind', label: 'Тип сериала', type: 'select', options: seriesKindOptions, defaultValue: 'seasons' },
   { key: 'active', label: 'Активен', type: 'checkbox', defaultValue: true }
 ]
