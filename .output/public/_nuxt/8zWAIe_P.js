@@ -1,0 +1,1 @@
+import{_ as r}from"./7Aj8wVOP.js";import{r as t}from"./7DzAeJDr.js";import{l as n,f as i,V as s,H as a}from"./BrHUN5uO.js";import"./gwpbCogX.js";import"./CC4RkRkl.js";import"./2H4GW-Rp.js";const x=n({__name:"create",setup(c){const e=t.users;return(m,f)=>{const o=r;return a(),i(o,{definition:s(e),"back-to":"/users"},null,8,["definition"])}}});export{x as default};

@@ -5,6 +5,9 @@ export default defineNuxtConfig({
   experimental: {
     viteEnvironmentApi: true
   },
+  nitro: {
+    preset: 'node-server'
+  },
   modules: ['@nuxt/ui', '@pinia/nuxt'],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
