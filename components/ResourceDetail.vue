@@ -176,6 +176,13 @@ function normalizeBooleanValue(value: unknown): boolean {
           :movie="item"
         />
 
+        <MovieStreamingPanel
+          v-if="definition.key === 'movies'"
+          :movie-id="id"
+          :movie="item"
+          @updated="load"
+        />
+
         <SeriesPosterPanel
           v-if="definition.key === 'series'"
           :series-id="id"
