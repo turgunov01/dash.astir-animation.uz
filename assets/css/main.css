@@ -1,36 +1,75 @@
+/* ------------------------------------------------------------------ *
+ * Astir Admin — design tokens
+ * Dark-first premium theme. Restrained neutral surfaces, a single
+ * emerald accent, no decorative multi-colour gradients.
+ * ------------------------------------------------------------------ */
+
 :root {
-  color-scheme: light;
-  --bg: #f6f8fb;
-  --surface: #ffffff;
-  --surface-soft: #eef3f8;
-  --border: #d9e2ec;
-  --text: #14213d;
-  --muted: #64748b;
-  --primary: #2374ab;
-  --primary-strong: #155e95;
-  --accent: #f5a524;
-  --success: #14855f;
-  --danger: #c2413a;
-  --warning: #b7791f;
-  --radius: 8px;
-  --shadow: 0 20px 50px rgb(15 23 42 / 8%);
+  color-scheme: dark;
+
+  /* deep, slightly cool near-black surfaces */
+  --bg: #0b0c0e;
+  --surface: #141518;
+  --surface-soft: #1b1d21;
+  --surface-hover: #212327;
+  --border: #26282c;
+  --border-strong: #33363b;
+
+  /* type */
+  --text: #ededed;
+  --text-strong: #ffffff;
+  --muted: #8a8f98;
+  --faint: #5c616a;
+
+  /* single emerald accent + quiet semantics */
+  --primary: #10b981;
+  --primary-strong: #34d399;
+  --primary-contrast: #04140d;
+  --accent: #10b981;
+  --success: #10b981;
+  --danger: #e5615a;
+  --warning: #d9a441;
+
+  --ring: color-mix(in srgb, var(--primary) 40%, transparent);
+  --radius: 10px;
+  --radius-lg: 14px;
+
+  /* subtle, layered — dark UIs lean on borders, not heavy shadows */
+  --shadow: 0 1px 2px rgb(0 0 0 / 40%), 0 8px 24px rgb(0 0 0 / 28%);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 35%);
 }
 
+/* Light theme kept clean and quiet for users who opt in */
+.light {
+  color-scheme: light;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-soft: #f4f4f5;
+  --surface-hover: #efeff1;
+  --border: #ececee;
+  --border-strong: #e0e0e3;
+
+  --text: #0a0a0a;
+  --text-strong: #000000;
+  --muted: #71717a;
+  --faint: #a1a1aa;
+
+  --primary: #059669;
+  --primary-strong: #047857;
+  --primary-contrast: #ffffff;
+  --accent: #059669;
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #b45309;
+
+  --ring: color-mix(in srgb, var(--primary) 28%, transparent);
+  --shadow: 0 1px 3px rgb(0 0 0 / 6%), 0 1px 2px rgb(0 0 0 / 4%);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 5%);
+}
+
+/* keep .dark working as an explicit alias of the default */
 .dark {
   color-scheme: dark;
-  --bg: #121820;
-  --surface: #182231;
-  --surface-soft: #202c3c;
-  --border: #324255;
-  --text: #edf4fb;
-  --muted: #9fb0c3;
-  --primary: #52a7dc;
-  --primary-strong: #86c7ec;
-  --accent: #f7b955;
-  --success: #47b881;
-  --danger: #f87171;
-  --warning: #facc15;
-  --shadow: 0 22px 55px rgb(0 0 0 / 25%);
 }
 
 * {
@@ -41,6 +80,9 @@ html {
   min-height: 100%;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizelegibility;
 }
 
 body {
@@ -48,6 +90,33 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
+  letter-spacing: -0.006em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 30%, transparent);
+  color: var(--text-strong);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: var(--border-strong);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--faint);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 a {
@@ -123,19 +192,23 @@ textarea {
 
 .brand-mark {
   display: grid;
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   place-items: center;
   border-radius: var(--radius);
-  background: linear-gradient(135deg, var(--primary), var(--accent));
-  color: #fff;
-  font-weight: 800;
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, var(--border));
+  background: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  color: var(--primary-strong);
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .brand-title {
   margin: 0;
-  font-size: 18px;
-  font-weight: 750;
+  font-size: 16px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  color: var(--text-strong);
 }
 
 .brand-subtitle {
@@ -155,21 +228,48 @@ textarea {
 
 .nav-link,
 .nav-group-label {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
-  padding: 10px 12px;
+  min-height: 38px;
+  padding: 9px 12px;
   border-radius: var(--radius);
   color: var(--muted);
-  font-size: 14px;
-  font-weight: 650;
+  font-size: 13.5px;
+  font-weight: 520;
+  transition: background 130ms ease, color 130ms ease;
 }
 
-.nav-link:hover,
-.nav-link.router-link-active {
+.nav-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--faint);
+}
+
+.nav-link:hover {
   background: var(--surface-soft);
   color: var(--text);
+}
+
+.nav-link.router-link-active {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--text-strong);
+  font-weight: 560;
+}
+
+.nav-link.router-link-active::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  height: 18px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--primary);
+  transform: translateY(-50%);
 }
 
 .nav-children {
@@ -238,8 +338,10 @@ textarea {
 
 .page-title {
   margin: 0;
-  font-size: 28px;
-  font-weight: 780;
+  font-size: 25px;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
 }
 
 .page-description {
@@ -310,9 +412,9 @@ textarea {
 
 .panel {
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   background: var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-soft);
 }
 
 .panel-header,
@@ -367,9 +469,10 @@ textarea {
 }
 
 .data-table th {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 750;
+  color: var(--faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -538,14 +641,21 @@ textarea {
   border: 1px solid transparent;
   border-radius: var(--radius);
   background: var(--primary);
-  color: #fff;
+  color: var(--primary-contrast);
   cursor: pointer;
-  font-weight: 720;
-  padding: 9px 13px;
+  font-weight: 640;
+  letter-spacing: 0.01em;
+  padding: 9px 14px;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, opacity 140ms ease;
 }
 
 .button:hover {
   background: var(--primary-strong);
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
 }
 
 .button.secondary {
@@ -577,10 +687,12 @@ textarea {
   align-items: center;
   gap: 6px;
   min-height: 24px;
+  border: 1px solid transparent;
   border-radius: 999px;
-  padding: 3px 9px;
+  padding: 3px 10px;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 560;
+  letter-spacing: 0.01em;
 }
 
 .badge.neutral {
@@ -691,8 +803,7 @@ textarea {
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at 20% 20%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 32%),
-    radial-gradient(circle at 80% 10%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 34%),
+    radial-gradient(circle at 50% -10%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 42%),
     var(--bg);
 }
 
@@ -837,7 +948,7 @@ textarea {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--primary), var(--accent));
+  background: var(--primary);
   transition: width 180ms ease;
 }
 
@@ -1173,7 +1284,7 @@ textarea {
 }
 
 .switch-row input:checked {
-  background: #111827;
+  background: var(--primary);
 }
 
 .switch-row input:checked::after {
@@ -1278,7 +1389,6 @@ textarea {
 
 .catalog-new {
   min-width: 96px;
-  background: #111827;
 }
 
 .catalog-filter,

@@ -33,6 +33,7 @@ export const MetadataCard: typeof import("../components/MetadataCard.vue")['defa
 export const MetricCard: typeof import("../components/MetricCard.vue")['default']
 export const MovieMediaPanel: typeof import("../components/MovieMediaPanel.vue")['default']
 export const MovieStatsPanel: typeof import("../components/MovieStatsPanel.vue")['default']
+export const MovieStreamingPanel: typeof import("../components/MovieStreamingPanel.vue")['default']
 export const MovieTagsPanel: typeof import("../components/MovieTagsPanel.vue")['default']
 export const PremiumBadge: typeof import("../components/PremiumBadge.vue")['default']
 export const ResourceCreate: typeof import("../components/ResourceCreate.vue")['default']
@@ -148,6 +149,7 @@ export const LazyMetadataCard: LazyComponent<typeof import("../components/Metada
 export const LazyMetricCard: LazyComponent<typeof import("../components/MetricCard.vue")['default']>
 export const LazyMovieMediaPanel: LazyComponent<typeof import("../components/MovieMediaPanel.vue")['default']>
 export const LazyMovieStatsPanel: LazyComponent<typeof import("../components/MovieStatsPanel.vue")['default']>
+export const LazyMovieStreamingPanel: LazyComponent<typeof import("../components/MovieStreamingPanel.vue")['default']>
 export const LazyMovieTagsPanel: LazyComponent<typeof import("../components/MovieTagsPanel.vue")['default']>
 export const LazyPremiumBadge: LazyComponent<typeof import("../components/PremiumBadge.vue")['default']>
 export const LazyResourceCreate: LazyComponent<typeof import("../components/ResourceCreate.vue")['default']>
