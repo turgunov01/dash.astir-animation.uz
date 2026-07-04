@@ -18,11 +18,23 @@ const posterFile = ref<File | null>(null)
 const posterSaving = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
 
-const posterPreview = computed(() => {
-  if (posterFile.value && process.client) return URL.createObjectURL(posterFile.value)
-  return currentPosterUrl.value
-})
+const posterObjectUrl = ref('')
 const currentPosterUrl = computed(() => mediaUrl(moviePosterPath(props.movie)))
+const posterPreview = computed(() => posterObjectUrl.value || currentPosterUrl.value)
+
+// Manage the blob URL lifecycle explicitly instead of allocating a new,
+// never-revoked URL inside a computed getter on every render.
+watch(posterFile, (file) => {
+  if (posterObjectUrl.value) {
+    URL.revokeObjectURL(posterObjectUrl.value)
+    posterObjectUrl.value = ''
+  }
+  if (file && process.client) posterObjectUrl.value = URL.createObjectURL(file)
+})
+
+onBeforeUnmount(() => {
+  if (posterObjectUrl.value) URL.revokeObjectURL(posterObjectUrl.value)
+})
 const statusLabel = computed(() => transcodeStatusLabel(props.movie))
 const statusTone = computed(() => transcodeStatusTone(props.movie))
 const progressVisible = computed(() => transcodeProgressVisible(props.movie))

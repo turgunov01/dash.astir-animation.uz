@@ -26,6 +26,19 @@ function setFilter(key: string, value: unknown) {
     [key]: value
   })
 }
+
+// A native <select> only ever yields strings, but a filter option's value may be
+// a real boolean/number. Map the picked string back to the original typed value
+// so the backend receives `false`/`true` instead of the truthy string "false".
+function setSelectFilter(filter: ResourceFilter, rawValue: string) {
+  if (rawValue === '') {
+    setFilter(filter.key, undefined)
+    return
+  }
+
+  const option = (filter.options || []).find((entry) => String(entry.value) === rawValue)
+  setFilter(filter.key, option ? option.value : rawValue)
+}
 </script>
 
 <template>
@@ -44,8 +57,8 @@ function setFilter(key: string, value: unknown) {
           v-if="filter.type === 'select'"
           class="select"
           style="max-width: 220px;"
-          :value="filterValues[filter.key] as string"
-          @change="setFilter(filter.key, ($event.target as HTMLSelectElement).value)"
+          :value="String(filterValues[filter.key] ?? '')"
+          @change="setSelectFilter(filter, ($event.target as HTMLSelectElement).value)"
         >
           <option value="">{{ filter.label }}</option>
           <option v-for="option in filter.options || []" :key="String(option.value)" :value="String(option.value)">

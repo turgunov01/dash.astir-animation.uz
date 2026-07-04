@@ -79,7 +79,7 @@ async function load() {
   error.value = null
 
   try {
-    const response = await api.get(props.definition.listEndpoint, /* buildListQuery() */)
+    const response = await api.get(props.definition.listEndpoint, buildListQuery())
     const normalized = normalizeList(response, props.definition.key)
     const scopedItems = await filterCatalogItems(normalized.items)
     pagination.value = extractPagination(response)

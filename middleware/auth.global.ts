@@ -22,7 +22,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   const roles = to.meta.roles as string[] | undefined
-  if (!isPublic && roles?.length && auth.role && !auth.hasAnyRole(roles)) {
+  if (!isPublic && roles?.length && !auth.hasAnyRole(roles)) {
     return abortNavigation(createError({ statusCode: 403, statusMessage: 'Недостаточно прав' }))
   }
 })

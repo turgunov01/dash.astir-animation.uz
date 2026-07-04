@@ -35,7 +35,9 @@ const { data, pending, error } = await useAsyncData('overview-metrics', async ()
 
 async function safeCount(endpoint: string, resourceKey = ''): Promise<number | string> {
   try {
-    const response = await api.get(endpoint, { limit: 1 })
+    // Request a large page instead of `limit: 1`: endpoints without a `total`
+    // field fall back to `items.length`, which `limit: 1` would cap at 1.
+    const response = await api.get(endpoint, { limit: 1000 })
     const normalized = normalizeList(response, resourceKey)
     return normalized.total ?? normalized.items.length
   } catch {

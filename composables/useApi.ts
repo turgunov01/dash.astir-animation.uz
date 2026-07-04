@@ -130,7 +130,7 @@ function isAuthRequest(path: string): boolean {
 }
 
 function isLoginRequest(path: string): boolean {
-  return path.includes('/auth/login') || path.includes('/auth/otp')
+  return path.includes('/auth/login') || path.includes('/auth/otp') || path.includes('/auth/refresh')
 }
 
 export function normalizeApiError(error: unknown): ApiErrorInfo {

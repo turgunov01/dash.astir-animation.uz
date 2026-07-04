@@ -18,12 +18,15 @@ const statusResult = ref<unknown>(null)
 const subscriptionResult = ref<unknown>(null)
 
 const selectedTariff = computed(() => tariffs.value.find((tariff) => String(getItemId(tariff)) === tariffId.value) || null)
-const paymentUrl = computed(() => String(getResourceValue(checkoutResult.value, 'payment_url') || ''))
+// The checkout response may be wrapped in a { data: … } envelope; unwrap it
+// before reading fields so the payment URL and transaction id resolve.
+const checkoutData = computed(() => unwrapPayload<Record<string, unknown>>(checkoutResult.value))
+const paymentUrl = computed(() => String(getResourceValue(checkoutData.value, 'payment_url') || ''))
 const checkoutTransactionId = computed(() => {
   const value =
-    getResourceValue(checkoutResult.value, 'transaction.id') ??
-    getResourceValue(checkoutResult.value, 'transaction_id') ??
-    getResourceValue(checkoutResult.value, 'transactionId')
+    getResourceValue(checkoutData.value, 'transaction.id') ??
+    getResourceValue(checkoutData.value, 'transaction_id') ??
+    getResourceValue(checkoutData.value, 'transactionId')
 
   return value === undefined || value === null ? '' : String(value)
 })

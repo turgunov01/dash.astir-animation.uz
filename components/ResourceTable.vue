@@ -20,9 +20,25 @@ const error = ref<ApiErrorInfo | null>(null)
 const deleteTarget = ref<Record<string, unknown> | null>(null)
 const handledUploadTaskIds = new Set<string>()
 
-const hasNextPage = computed(() => page.value * limit < total.value)
+const hasNextPage = computed(() => {
+  // Prefer a real backend total when it exceeds the rows we've paged through.
+  if (total.value > page.value * limit) return true
+  // Fallback for endpoints that return a bare array without a reliable total:
+  // a full page implies there may be a next one.
+  return items.value.length >= limit
+})
 
-watch([search, filterValues, page], () => load(), { deep: true })
+// Reset to the first page whenever the search or filters change, otherwise the
+// backend is asked for a page index that no longer exists in the shorter result.
+watch(
+  [search, filterValues],
+  () => {
+    if (page.value !== 1) page.value = 1
+    else void load()
+  },
+  { deep: true }
+)
+watch(page, () => void load())
 watch(
   () => uploadQueue.tasks.map((task) => `${task.id}:${task.status}:${task.completedAt || ''}`).join('|'),
   () => {

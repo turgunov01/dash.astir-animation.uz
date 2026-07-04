@@ -40,19 +40,50 @@ const pageTitle = computed(() => {
 onMounted(load)
 
 async function load() {
-  if (!props.definition.detailEndpoint) return
+  if (!props.definition.detailEndpoint && !props.definition.listEndpoint) return
 
   loading.value = true
   error.value = null
 
   try {
-    const response = await api.get(resolveEndpoint(props.definition.detailEndpoint, { id: props.id }))
-    item.value = unwrapPayload<Record<string, unknown>>(response, props.definition.key)
+    item.value = await loadDetailItem()
     await loadRelated()
   } catch (requestError) {
     error.value = requestError as ApiErrorInfo
   } finally {
     loading.value = false
+  }
+}
+
+async function loadDetailItem(): Promise<Record<string, unknown>> {
+  if (props.definition.detailEndpoint) {
+    try {
+      const response = await api.get(resolveEndpoint(props.definition.detailEndpoint, { id: props.id }))
+      return unwrapPayload<Record<string, unknown>>(response, props.definition.key)
+    } catch (detailError) {
+      // Some resources (e.g. FAQ) have no single-item GET route on the backend
+      // and return 404. Fall back to locating the record in the list response.
+      const fallback = await loadFromList()
+      if (fallback) return fallback
+      throw detailError
+    }
+  }
+
+  const fallback = await loadFromList()
+  if (fallback) return fallback
+  throw normalizeApiError({ message: 'Запись не найдена' })
+}
+
+async function loadFromList(): Promise<Record<string, unknown> | null> {
+  if (!props.definition.listEndpoint) return null
+
+  try {
+    const response = await api.get(props.definition.listEndpoint, { limit: 1000 })
+    const rows = normalizeList(response, props.definition.key).items
+    const match = rows.find((row) => String(getItemId(row, props.definition.idKey)) === String(props.id))
+    return match ?? null
+  } catch {
+    return null
   }
 }
 

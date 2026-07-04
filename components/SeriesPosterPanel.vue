@@ -19,9 +19,20 @@ const posterAvailable = ref(true)
 const posterCacheKey = ref(Date.now())
 const error = ref<ApiErrorInfo | null>(null)
 
-const selectedPosterPreview = computed(() => {
-  if (!posterFile.value || !process.client) return ''
-  return URL.createObjectURL(posterFile.value)
+const selectedPosterPreview = ref('')
+
+// Manage the blob URL lifecycle explicitly so selecting a new poster does not
+// leak an un-revoked object URL for the page's lifetime.
+watch(posterFile, (file) => {
+  if (selectedPosterPreview.value) {
+    URL.revokeObjectURL(selectedPosterPreview.value)
+    selectedPosterPreview.value = ''
+  }
+  if (file && process.client) selectedPosterPreview.value = URL.createObjectURL(file)
+})
+
+onBeforeUnmount(() => {
+  if (selectedPosterPreview.value) URL.revokeObjectURL(selectedPosterPreview.value)
 })
 const posterUrl = computed(() => {
   const baseUrl = String(config.public.apiBaseUrl || '').replace(/\/$/, '')

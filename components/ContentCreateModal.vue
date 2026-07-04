@@ -46,7 +46,21 @@ const loading = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
 
 const locales = ['uz', 'ru', 'en'] as const
-const posterPreview = computed(() => (poster.value && process.client ? URL.createObjectURL(poster.value) : ''))
+const posterPreview = ref('')
+
+// Manage the blob URL lifecycle explicitly instead of leaking a fresh,
+// never-revoked object URL from a computed getter on each render.
+watch(poster, (file) => {
+  if (posterPreview.value) {
+    URL.revokeObjectURL(posterPreview.value)
+    posterPreview.value = ''
+  }
+  if (file && process.client) posterPreview.value = URL.createObjectURL(file)
+})
+
+onBeforeUnmount(() => {
+  if (posterPreview.value) URL.revokeObjectURL(posterPreview.value)
+})
 const pageTitle = computed(() => (props.contentType === 'series' ? 'Новый сериал' : 'Новый фильм'))
 
 onMounted(() => {

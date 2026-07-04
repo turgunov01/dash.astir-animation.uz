@@ -44,9 +44,15 @@ async function load() {
   item.value = null
 
   try {
-    const child = queryParentId.value
+    let child = queryParentId.value
       ? await loadChildForParent(queryParentId.value)
-      : await findChildAcrossParents()
+      : await loadChildDirect()
+
+    // Only fall back to scanning every parent's children if the direct lookup
+    // failed and we had no parent hint — avoids a serial request storm.
+    if (!child && !queryParentId.value) {
+      child = await findChildAcrossParents()
+    }
 
     if (!child) {
       error.value = 'Ребенок не найден. Проверьте ID или откройте запись из общего списка детей.'
@@ -69,6 +75,22 @@ async function loadChildForParent(parentIdValue: string) {
 
   const child = normalizeList(childrenResponse, 'children').items.find((row) => sameId(getItemId(row), props.id))
   return child ? withParent(child, parentValue || { id: parentIdValue }) : null
+}
+
+async function loadChildDirect() {
+  try {
+    const response = await api.get(`/v1/children/${encodeURIComponent(String(props.id))}`)
+    const child = unwrapPayload<Record<string, unknown>>(response, 'child')
+    if (!child || getItemId(child) === undefined) return null
+
+    const parentIdValue = String(
+      getResourceValue(child, 'parent_id') ?? getResourceValue(child, 'parentId') ?? ''
+    )
+    const parentValue = parentIdValue ? await loadParent(parentIdValue) : null
+    return withParent(child, parentValue || { id: parentIdValue })
+  } catch {
+    return null
+  }
 }
 
 async function findChildAcrossParents() {

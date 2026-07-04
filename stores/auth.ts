@@ -94,9 +94,22 @@ export const useAuthStore = defineStore('auth', () => {
     initialized.value = true
   }
 
+  let refreshInFlight: Promise<boolean> | null = null
+
   async function refresh() {
     if (!refreshToken.value) return false
+    // De-duplicate concurrent refreshes: several parallel 401s must share one
+    // refresh call, otherwise later requests reuse an already-rotated token and
+    // force a logout mid-session.
+    if (refreshInFlight) return refreshInFlight
 
+    refreshInFlight = performRefresh().finally(() => {
+      refreshInFlight = null
+    })
+    return refreshInFlight
+  }
+
+  async function performRefresh() {
     try {
       const api = useApi()
       const response = await api.request<Record<string, unknown>>('/api/v1/auth/refresh', {

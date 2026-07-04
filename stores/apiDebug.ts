@@ -43,7 +43,7 @@ export interface ApiDebugEntry {
 
 const STORAGE_KEY = 'astir_api_debug_entries'
 const MAX_ENTRIES = 200
-const SENSITIVE_KEY_PATTERN = /(password|token|secret|authorization|cookie|otp|pin)/i
+const SENSITIVE_KEY_PATTERN = /(password|token|secret|authorization|cookie|otp|pin|access|refresh|jwt|bearer)/i
 
 export const useApiDebugStore = defineStore('apiDebug', () => {
   const entries = ref<ApiDebugEntry[]>([])

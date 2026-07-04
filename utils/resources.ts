@@ -183,7 +183,7 @@ const faqFields: ResourceField[] = [
   { key: 'question', label: 'Вопрос', type: 'localized', required: true },
   { key: 'answer', label: 'Ответ', type: 'localized', rows: 5, required: true },
   { key: 'active', label: 'Активен', type: 'checkbox', defaultValue: true },
-  { key: 'sortOrder', label: 'Порядок', type: 'number' }
+  { key: 'sort_order', label: 'Порядок', type: 'number', defaultValue: 0 }
 ]
 
 const userTools: EndpointToolDefinition[] = [
@@ -254,7 +254,7 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
       { key: 'active', label: 'Активен', kind: 'boolean' },
       { key: 'tariff.title', label: 'Тариф', kind: 'localized' },
       { key: 'createdAt', label: 'Создан', kind: 'date' },
-      { key: 'lastLogin', label: 'Последний вход', kind: 'date' }
+      { key: 'lastLoginAt', label: 'Последний вход', kind: 'date' }
     ],
     filters: [
       { key: 'role', label: 'Роль', type: 'select', options: roleOptions },
@@ -282,9 +282,9 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
     title: 'Дети',
     description: 'Профили детей, PIN, устройства, правила просмотра и продление watch time.',
     listEndpoint: '/api/v1/children',
-    detailEndpoint: '/api/v1/children/{id}',
-    updateEndpoint: '/api/v1/children/{id}',
-    deleteEndpoint: '/api/v1/children/{id}',
+    detailEndpoint: '/v1/children/{id}',
+    updateEndpoint: '/v1/children/{id}',
+    deleteEndpoint: '/v1/children/{id}',
     detailRoute: '/children',
     columns: [
       { key: 'id', label: 'ID' },
@@ -481,12 +481,13 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
     listEndpoint: '/api/v1/billing/subscriptions',
     columns: [
       { key: 'id', label: 'ID' },
-      { key: 'parent.email', label: 'Родитель' },
-      { key: 'tariff.title', label: 'Тариф', kind: 'localized' },
-      { key: 'provider', label: 'Provider' },
+      { key: 'user.email', label: 'Родитель' },
+      { key: 'user_id', label: 'User ID' },
+      { key: 'plan_id', label: 'Тариф' },
       { key: 'status', label: 'Статус', kind: 'status' },
-      { key: 'startedAt', label: 'Старт', kind: 'date' },
-      { key: 'expiresAt', label: 'До', kind: 'date' }
+      { key: 'auto_renew', label: 'Автопродление', kind: 'boolean' },
+      { key: 'starts_at', label: 'Старт', kind: 'date' },
+      { key: 'ends_at', label: 'До', kind: 'date' }
     ],
     filters: [{ key: 'status', label: 'Статус', type: 'select', options: statusOptions }]
   },
@@ -516,10 +517,9 @@ export const resourceDefinitions: Record<string, ResourceDefinition> = {
     columns: [
       { key: 'id', label: 'ID' },
       { key: 'user.email', label: 'Пользователь' },
-      { key: 'status', label: 'Статус', kind: 'status' },
-      { key: 'unreadCount', label: 'Unread', kind: 'number' },
-      { key: 'lastMessage', label: 'Последнее сообщение' },
-      { key: 'updatedAt', label: 'Обновлен', kind: 'date' }
+      { key: 'admin_unread_count', label: 'Unread', kind: 'number' },
+      { key: 'last_message_preview', label: 'Последнее сообщение' },
+      { key: 'last_message_at', label: 'Обновлен', kind: 'date' }
     ],
     filters: [{ key: 'status', label: 'Статус', type: 'select', options: statusOptions }],
     related: [{ title: 'Сообщения', endpoint: '/api/v1/admin/support/chats/{id}/messages' }],
