@@ -3,7 +3,7 @@
 // how many images are in the load+decode phase simultaneously; the rest wait in
 // a queue and start as slots free up — Pinterest-style regulated loading.
 
-const MAX_CONCURRENT_IMAGE_LOADS = 3
+const MAX_CONCURRENT_IMAGE_LOADS = 6
 
 let active = 0
 const waiting: Array<() => void> = []

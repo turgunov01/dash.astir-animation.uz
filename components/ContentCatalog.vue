@@ -412,7 +412,7 @@ function posterThumbOf(row: Record<string, unknown>): string {
   const index = full.indexOf(marker)
   if (index === -1) return full
 
-  return `${full.slice(0, index)}/media-thumb/${full.slice(index + marker.length)}?w=320`
+  return `${full.slice(0, index)}/media-thumb/${full.slice(index + marker.length)}?w=256`
 }
 
 function mediaUrl(value: unknown): string {

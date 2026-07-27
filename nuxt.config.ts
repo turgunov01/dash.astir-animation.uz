@@ -62,6 +62,12 @@ export default defineNuxtConfig({
           name: 'description',
           content: 'Internal admin dashboard for the Astir kids streaming platform.'
         }
+      ],
+      link: [
+        // Establish the TLS connection to the API/media host early so posters
+        // and data requests start with no connection-setup latency.
+        { rel: 'preconnect', href: 'https://test-api.astir-animation.uz' },
+        { rel: 'dns-prefetch', href: 'https://test-api.astir-animation.uz' }
       ]
     }
   }
