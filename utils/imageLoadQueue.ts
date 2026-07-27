@@ -8,6 +8,19 @@ const MAX_CONCURRENT_IMAGE_LOADS = 6
 let active = 0
 const waiting: Array<() => void> = []
 
+// URLs that have already loaded this session are in the browser's disk/memory
+// cache. Re-showing them (pagination, revisits) can bypass the observer + queue
+// and render instantly, so listing never "reloads and hangs" on cached posters.
+const loadedImageSrcs = new Set<string>()
+
+export function markImageLoaded(src: string): void {
+  if (src) loadedImageSrcs.add(src)
+}
+
+export function isImageLoaded(src: string): boolean {
+  return Boolean(src) && loadedImageSrcs.has(src)
+}
+
 export interface ImageSlot {
   /** Resolves when this image is allowed to start loading. */
   promise: Promise<void>

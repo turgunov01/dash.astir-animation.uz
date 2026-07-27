@@ -865,4 +865,14 @@ async function confirmDelete() {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* Snappy row hover with a solid colour (no transition/blur); posters sit on
+   their own compositing layer so highlighting a row never re-rasterizes them. */
+.catalog-table tbody tr:hover td {
+  background: var(--surface-hover);
+}
+
+.poster-thumb {
+  transform: translateZ(0);
+}
 </style>

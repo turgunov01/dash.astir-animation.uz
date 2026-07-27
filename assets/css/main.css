@@ -298,9 +298,11 @@ textarea {
   justify-content: space-between;
   gap: 16px;
   border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  /* Opaque background instead of a translucent one + backdrop-filter: blur().
+     backdrop-blur re-renders on every repaint under the sticky bar (hover,
+     scroll, pagination) and was the main source of interface lag. */
+  background: var(--bg);
   padding: 12px 24px;
-  backdrop-filter: blur(14px);
 }
 
 .breadcrumbs {

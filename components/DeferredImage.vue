@@ -51,6 +51,13 @@ async function beginLoad() {
 function startObserver() {
   if (!activeSrc.value) return
 
+  // Already loaded this session → it's in the browser cache; render instantly,
+  // bypassing the observer and the concurrency queue (no reload, no hang).
+  if (isImageLoaded(activeSrc.value)) {
+    shouldLoad.value = true
+    return
+  }
+
   // No IntersectionObserver (very old browser / SSR edge): load right away.
   if (typeof IntersectionObserver === 'undefined') {
     void beginLoad()
@@ -69,6 +76,7 @@ function startObserver() {
 
 function onLoad() {
   loaded.value = true
+  markImageLoaded(activeSrc.value)
   releaseSlot()
 }
 
