@@ -6,6 +6,9 @@ const api = useApi()
 
 const movieId = computed(() => String(route.params.movie_id || ''))
 
+const range = ref(30)
+const rangeOptions = [7, 30, 90]
+
 const DONUT_CIRCUMFERENCE = 2 * Math.PI * 52
 
 function unwrap(response: unknown): Record<string, unknown> {
@@ -53,7 +56,7 @@ const { data, pending, error } = await useAsyncData(`analytics-${movieId.value}`
     api.get(`/v1/content/movies/${encodeURIComponent(id)}`),
     api.get(`/api/statistics/${encodeURIComponent(id)}`),
     api.get(`/api/v1/content/${encodeURIComponent(id)}/comments`),
-    api.get(`/api/statistics/${encodeURIComponent(id)}/timeseries`, { days: 30 })
+    api.get(`/api/statistics/${encodeURIComponent(id)}/timeseries`, { days: range.value })
   ])
 
   const detail = detailResult.status === 'fulfilled' ? unwrap(detailResult.value) : {}
@@ -64,7 +67,7 @@ const { data, pending, error } = await useAsyncData(`analytics-${movieId.value}`
   const timeseries = seriesResult.status === 'fulfilled' ? unwrap(seriesResult.value) : {}
 
   return { detail, stats, comments, timeseries }
-})
+}, { watch: [range] })
 
 const detail = computed(() => data.value?.detail ?? {})
 const stats = computed(() => data.value?.stats ?? {})
@@ -291,7 +294,7 @@ const commentsPath = computed(() => activityPath('comments'))
     </div>
 
     <ApiErrorAlert v-if="error" :error="String(error)" />
-    <div v-if="pending" class="loading-state">Загрузка статистики...</div>
+    <div v-if="pending && !data" class="loading-state">Загрузка статистики...</div>
 
     <template v-else>
       <div class="analytics-kpis">
@@ -387,8 +390,19 @@ const commentsPath = computed(() => activityPath('comments'))
 
       <div class="panel">
         <div class="panel-header">
-          <h2 class="analytics-chart-title">Просмотры по дням</h2>
-          <span class="badge neutral">30 дней · {{ fmtInt(totalViewsPeriod) }}</span>
+          <h2 class="analytics-chart-title">Просмотры по дням · {{ fmtInt(totalViewsPeriod) }}</h2>
+          <div class="range-tabs">
+            <button
+              v-for="r in rangeOptions"
+              :key="r"
+              class="range-tab"
+              :class="{ active: range === r }"
+              type="button"
+              @click="range = r"
+            >
+              {{ r }}д
+            </button>
+          </div>
         </div>
         <div class="panel-body">
           <div v-if="hasSeries">
@@ -409,7 +423,7 @@ const commentsPath = computed(() => activityPath('comments'))
             </div>
           </div>
           <p v-else class="analytics-muted">
-            Нет событий просмотра за 30 дней. Данные появятся, когда бэкенд с endpoint'ом
+            Нет событий просмотра за {{ range }} дней. Данные появятся, когда бэкенд с endpoint'ом
             <code>/api/statistics/{id}/timeseries</code> будет задеплоен и начнут накапливаться просмотры.
           </p>
         </div>
@@ -418,7 +432,7 @@ const commentsPath = computed(() => activityPath('comments'))
       <div class="panel">
         <div class="panel-header">
           <h2 class="analytics-chart-title">Реакции и комментарии по дням</h2>
-          <span class="badge neutral">30 дней</span>
+          <span class="badge neutral">{{ range }} дней</span>
         </div>
         <div class="panel-body">
           <div v-if="hasActivity">
@@ -748,5 +762,27 @@ const commentsPath = computed(() => activityPath('comments'))
 .chart-comments {
   stroke: #3b82f6;
   stroke-dasharray: 5 3;
+}
+
+.range-tabs {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.range-tab {
+  padding: 4px 10px;
+  border: 1px solid var(--border, #26282c);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+}
+
+.range-tab.active {
+  background: var(--primary, #10b981);
+  border-color: var(--primary, #10b981);
+  color: var(--primary-contrast, #04140d);
 }
 </style>
