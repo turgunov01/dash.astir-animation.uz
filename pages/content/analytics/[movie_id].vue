@@ -206,6 +206,64 @@ const retentionArea = computed(() => {
   const base = CHART_H - PAD_B
   return `${retentionPath.value} L${retentionX(points.length - 1).toFixed(1)},${base} L${retentionX(0).toFixed(1)},${base} Z`
 })
+
+// --- reactions & comments per day ---
+const activityByDay = computed(() => {
+  const ts = data.value?.timeseries ?? {}
+  const reactions = getResourceValue(ts, 'reactions_by_day')
+  const commentsSeries = getResourceValue(ts, 'comments_by_day')
+  const map = new Map<string, { likes: number; dislikes: number; comments: number }>()
+  const ensure = (day: string) => {
+    let entry = map.get(day)
+    if (!entry) {
+      entry = { likes: 0, dislikes: 0, comments: 0 }
+      map.set(day, entry)
+    }
+    return entry
+  }
+
+  if (Array.isArray(reactions)) {
+    for (const row of reactions as Record<string, unknown>[]) {
+      const day = String(getResourceValue(row, 'day') || '')
+      if (!day) continue
+      const entry = ensure(day)
+      entry.likes += num(row.likes)
+      entry.dislikes += num(row.dislikes)
+    }
+  }
+  if (Array.isArray(commentsSeries)) {
+    for (const row of commentsSeries as Record<string, unknown>[]) {
+      const day = String(getResourceValue(row, 'day') || '')
+      if (!day) continue
+      ensure(day).comments += num(row.comments)
+    }
+  }
+
+  return [...map.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([day, value]) => ({ day, ...value }))
+})
+const hasActivity = computed(() => activityByDay.value.length > 0)
+const activityMax = computed(() => Math.max(1, ...activityByDay.value.flatMap((d) => [d.likes, d.dislikes, d.comments])))
+
+function activityX(index: number, count: number): number {
+  const innerW = CHART_W - PAD_L - PAD_R
+  return count <= 1 ? PAD_L + innerW / 2 : PAD_L + (index / (count - 1)) * innerW
+}
+function activityY(value: number): number {
+  const innerH = CHART_H - PAD_T - PAD_B
+  return PAD_T + innerH - (value / activityMax.value) * innerH
+}
+function activityPath(key: 'likes' | 'dislikes' | 'comments'): string {
+  const rows = activityByDay.value
+  if (!rows.length) return ''
+  return rows
+    .map((d, i) => `${i === 0 ? 'M' : 'L'}${activityX(i, rows.length).toFixed(1)},${activityY(d[key]).toFixed(1)}`)
+    .join(' ')
+}
+const likesPath = computed(() => activityPath('likes'))
+const dislikesPath = computed(() => activityPath('dislikes'))
+const commentsPath = computed(() => activityPath('comments'))
 </script>
 
 <template>
@@ -354,6 +412,30 @@ const retentionArea = computed(() => {
             Нет событий просмотра за 30 дней. Данные появятся, когда бэкенд с endpoint'ом
             <code>/api/statistics/{id}/timeseries</code> будет задеплоен и начнут накапливаться просмотры.
           </p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="analytics-chart-title">Реакции и комментарии по дням</h2>
+          <span class="badge neutral">30 дней</span>
+        </div>
+        <div class="panel-body">
+          <div v-if="hasActivity">
+            <svg class="line-chart" :viewBox="`0 0 ${CHART_W} ${CHART_H}`" role="img" aria-label="Реакции и комментарии по дням">
+              <line class="chart-axis" :x1="PAD_L" :y1="CHART_H - PAD_B" :x2="CHART_W - PAD_R" :y2="CHART_H - PAD_B" />
+              <path class="chart-line chart-views" :d="likesPath" />
+              <path class="chart-line chart-danger-line" :d="dislikesPath" />
+              <path class="chart-line chart-comments" :d="commentsPath" />
+            </svg>
+            <div class="chart-legend">
+              <span><i class="legend-dot dot-success" /> Лайки</span>
+              <span><i class="legend-dot dot-danger" /> Дизлайки</span>
+              <span><i class="legend-dot dot-primary" /> Комментарии</span>
+              <span class="chart-max">макс/день: {{ fmtInt(activityMax) }}</span>
+            </div>
+          </div>
+          <p v-else class="analytics-muted">Нет реакций и комментариев за период (появится после деплоя бэкенда).</p>
         </div>
       </div>
 
@@ -657,5 +739,14 @@ const retentionArea = computed(() => {
 
 .chart-area-retention {
   fill: color-mix(in srgb, #f59e0b 13%, transparent);
+}
+
+.chart-danger-line {
+  stroke: #dc2626;
+}
+
+.chart-comments {
+  stroke: #3b82f6;
+  stroke-dasharray: 5 3;
 }
 </style>
