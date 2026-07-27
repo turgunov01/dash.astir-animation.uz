@@ -49,10 +49,11 @@ function commentAuthor(comment: Record<string, unknown>): string {
 
 const { data, pending, error } = await useAsyncData(`analytics-${movieId.value}`, async () => {
   const id = movieId.value
-  const [detailResult, statsResult, commentsResult] = await Promise.allSettled([
+  const [detailResult, statsResult, commentsResult, seriesResult] = await Promise.allSettled([
     api.get(`/v1/content/movies/${encodeURIComponent(id)}`),
     api.get(`/api/statistics/${encodeURIComponent(id)}`),
-    api.get(`/api/v1/content/${encodeURIComponent(id)}/comments`)
+    api.get(`/api/v1/content/${encodeURIComponent(id)}/comments`),
+    api.get(`/api/statistics/${encodeURIComponent(id)}/timeseries`, { days: 30 })
   ])
 
   const detail = detailResult.status === 'fulfilled' ? unwrap(detailResult.value) : {}
@@ -60,8 +61,9 @@ const { data, pending, error } = await useAsyncData(`analytics-${movieId.value}`
   const comments = commentsResult.status === 'fulfilled'
     ? normalizeList(commentsResult.value, 'comments').items
     : []
+  const timeseries = seriesResult.status === 'fulfilled' ? unwrap(seriesResult.value) : {}
 
-  return { detail, stats, comments }
+  return { detail, stats, comments, timeseries }
 })
 
 const detail = computed(() => data.value?.detail ?? {})
@@ -122,6 +124,48 @@ const year = computed(() => {
   const value = num(getObjectValue(detail.value, 'year'))
   return value > 0 ? String(value) : ''
 })
+
+// --- daily views chart (hand-rolled SVG) ---
+const CHART_W = 640
+const CHART_H = 220
+const PAD_L = 40
+const PAD_R = 14
+const PAD_T = 14
+const PAD_B = 28
+
+const viewsByDay = computed(() => {
+  const raw = getResourceValue(data.value?.timeseries ?? {}, 'views_by_day')
+  return Array.isArray(raw) ? (raw as Record<string, unknown>[]) : []
+})
+const hasSeries = computed(() => viewsByDay.value.length > 0)
+const chartMax = computed(() => Math.max(1, ...viewsByDay.value.flatMap((d) => [num(d.views), num(d.viewers)])))
+const totalViewsPeriod = computed(() => viewsByDay.value.reduce((sum, d) => sum + num(d.views), 0))
+
+function pointX(index: number, count: number): number {
+  const innerW = CHART_W - PAD_L - PAD_R
+  return count <= 1 ? PAD_L + innerW / 2 : PAD_L + (index / (count - 1)) * innerW
+}
+function pointY(value: number): number {
+  const innerH = CHART_H - PAD_T - PAD_B
+  return PAD_T + innerH - (value / chartMax.value) * innerH
+}
+function linePath(key: string): string {
+  const rows = viewsByDay.value
+  if (!rows.length) return ''
+  return rows
+    .map((d, i) => `${i === 0 ? 'M' : 'L'}${pointX(i, rows.length).toFixed(1)},${pointY(num(d[key])).toFixed(1)}`)
+    .join(' ')
+}
+const viewsPath = computed(() => linePath('views'))
+const viewersPath = computed(() => linePath('viewers'))
+const areaPath = computed(() => {
+  const rows = viewsByDay.value
+  if (!rows.length) return ''
+  const base = CHART_H - PAD_B
+  return `${viewsPath.value} L${pointX(rows.length - 1, rows.length).toFixed(1)},${base} L${pointX(0, rows.length).toFixed(1)},${base} Z`
+})
+const firstDay = computed(() => String(viewsByDay.value[0]?.day || ''))
+const lastDay = computed(() => String(viewsByDay.value[viewsByDay.value.length - 1]?.day || ''))
 </script>
 
 <template>
@@ -243,15 +287,42 @@ const year = computed(() => {
         </div>
       </div>
 
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="analytics-chart-title">Просмотры по дням</h2>
+          <span class="badge neutral">30 дней · {{ fmtInt(totalViewsPeriod) }}</span>
+        </div>
+        <div class="panel-body">
+          <div v-if="hasSeries">
+            <svg class="line-chart" :viewBox="`0 0 ${CHART_W} ${CHART_H}`" role="img" aria-label="Просмотры по дням">
+              <line class="chart-axis" :x1="PAD_L" :y1="CHART_H - PAD_B" :x2="CHART_W - PAD_R" :y2="CHART_H - PAD_B" />
+              <path class="chart-area" :d="areaPath" />
+              <path class="chart-line chart-views" :d="viewsPath" />
+              <path class="chart-line chart-viewers" :d="viewersPath" />
+            </svg>
+            <div class="chart-x">
+              <span>{{ firstDay }}</span>
+              <span>{{ lastDay }}</span>
+            </div>
+            <div class="chart-legend">
+              <span><i class="legend-dot dot-success" /> Просмотры</span>
+              <span><i class="legend-dot dot-primary" /> Уник. зрители</span>
+              <span class="chart-max">макс/день: {{ fmtInt(chartMax) }}</span>
+            </div>
+          </div>
+          <p v-else class="analytics-muted">
+            Нет событий просмотра за 30 дней. Данные появятся, когда бэкенд с endpoint'ом
+            <code>/api/statistics/{id}/timeseries</code> будет задеплоен и начнут накапливаться просмотры.
+          </p>
+        </div>
+      </div>
+
       <div class="panel analytics-soon">
         <div class="panel-body">
-          <AppIcon name="i-lucide-line-chart" />
+          <AppIcon name="i-lucide-gauge" />
           <div>
-            <strong>Графики по дням (просмотры, время просмотра, удержание) — следующий модуль.</strong>
-            <p>
-              Данные для них уже собираются на бэкенде (<code>watch_history</code>, <code>watch_progress</code>),
-              нужен только агрегирующий endpoint — тогда здесь появятся временные ряды и кривая досмотра.
-            </p>
+            <strong>Кривая удержания (досмотр по таймкоду) — ещё один модуль.</strong>
+            <p>Считается из <code>watch_progress</code>; добавлю следующим шагом.</p>
           </div>
         </div>
       </div>
@@ -461,5 +532,66 @@ const year = computed(() => {
 .analytics-soon p {
   margin: 4px 0 0;
   line-height: 1.5;
+}
+
+.line-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.chart-axis {
+  stroke: var(--border, #26282c);
+  stroke-width: 1;
+}
+
+.chart-area {
+  fill: color-mix(in srgb, var(--primary, #10b981) 13%, transparent);
+  stroke: none;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 2;
+}
+
+.chart-views {
+  stroke: var(--primary, #10b981);
+}
+
+.chart-viewers {
+  stroke: #3b82f6;
+  stroke-dasharray: 5 3;
+}
+
+.chart-x {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.chart-legend .chart-max {
+  margin-left: auto;
+}
+
+.chart-legend .legend-dot {
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.dot-primary {
+  background: #3b82f6;
 }
 </style>
