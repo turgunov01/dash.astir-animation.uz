@@ -166,6 +166,46 @@ const areaPath = computed(() => {
 })
 const firstDay = computed(() => String(viewsByDay.value[0]?.day || ''))
 const lastDay = computed(() => String(viewsByDay.value[viewsByDay.value.length - 1]?.day || ''))
+
+// --- audience retention curve ---
+const retentionData = computed(() => {
+  const raw = getResourceValue(data.value?.timeseries ?? {}, 'retention_buckets')
+  const rows = Array.isArray(raw) ? (raw as Record<string, unknown>[]) : []
+  const counts = new Array(10).fill(0)
+  for (const row of rows) {
+    const bucket = num(row.bucket)
+    if (bucket >= 1 && bucket <= 10) counts[bucket - 1] += num(row.viewers)
+  }
+  const total = counts.reduce((sum, value) => sum + value, 0)
+  if (total === 0) return [] as Array<{ pct: number; retention: number }>
+  return counts.map((_, index) => {
+    const reached = counts.slice(index).reduce((sum, value) => sum + value, 0)
+    return { pct: index * 10, retention: Math.round((reached / total) * 100) }
+  })
+})
+const hasRetention = computed(() => retentionData.value.length > 0)
+
+function retentionX(index: number): number {
+  const innerW = CHART_W - PAD_L - PAD_R
+  return PAD_L + (index / 9) * innerW
+}
+function retentionY(pct: number): number {
+  const innerH = CHART_H - PAD_T - PAD_B
+  return PAD_T + innerH - (pct / 100) * innerH
+}
+const retentionPath = computed(() => {
+  const points = retentionData.value
+  if (!points.length) return ''
+  return points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'}${retentionX(i).toFixed(1)},${retentionY(p.retention).toFixed(1)}`)
+    .join(' ')
+})
+const retentionArea = computed(() => {
+  const points = retentionData.value
+  if (!points.length) return ''
+  const base = CHART_H - PAD_B
+  return `${retentionPath.value} L${retentionX(points.length - 1).toFixed(1)},${base} L${retentionX(0).toFixed(1)},${base} Z`
+})
 </script>
 
 <template>
@@ -317,13 +357,29 @@ const lastDay = computed(() => String(viewsByDay.value[viewsByDay.value.length -
         </div>
       </div>
 
-      <div class="panel analytics-soon">
+      <div class="panel">
+        <div class="panel-header">
+          <h2 class="analytics-chart-title">Удержание аудитории</h2>
+          <span class="badge neutral">% досмотра</span>
+        </div>
         <div class="panel-body">
-          <AppIcon name="i-lucide-gauge" />
-          <div>
-            <strong>Кривая удержания (досмотр по таймкоду) — ещё один модуль.</strong>
-            <p>Считается из <code>watch_progress</code>; добавлю следующим шагом.</p>
+          <div v-if="hasRetention">
+            <svg class="line-chart" :viewBox="`0 0 ${CHART_W} ${CHART_H}`" role="img" aria-label="Удержание аудитории">
+              <line class="chart-axis" :x1="PAD_L" :y1="CHART_H - PAD_B" :x2="CHART_W - PAD_R" :y2="CHART_H - PAD_B" />
+              <path class="chart-area chart-area-retention" :d="retentionArea" />
+              <path class="chart-line chart-retention" :d="retentionPath" />
+            </svg>
+            <div class="chart-x">
+              <span>Начало</span>
+              <span>Середина</span>
+              <span>Конец</span>
+            </div>
+            <p class="bars-note">Доля зрителей, досмотревших до отметки видео (по последней сохранённой позиции просмотра).</p>
           </div>
+          <p v-else class="analytics-muted">
+            Недостаточно данных о просмотре (нужны <code>watch_progress</code> и длительность контента) —
+            появится после деплоя бэкенда и накопления просмотров.
+          </p>
         </div>
       </div>
     </template>
@@ -593,5 +649,13 @@ const lastDay = computed(() => String(viewsByDay.value[viewsByDay.value.length -
 
 .dot-primary {
   background: #3b82f6;
+}
+
+.chart-retention {
+  stroke: #f59e0b;
+}
+
+.chart-area-retention {
+  fill: color-mix(in srgb, #f59e0b 13%, transparent);
 }
 </style>
