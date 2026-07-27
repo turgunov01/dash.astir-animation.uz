@@ -1,1 +1,0 @@
-import{_ as a}from"./DmmilSKe.js";import{l as n,a1 as e,f as i,V as r,H as s}from"./BrHUN5uO.js";import"./2H4GW-Rp.js";import"./gwpbCogX.js";const d=n({__name:"[id]",setup(c){const t=e();return(p,_)=>{const o=a;return s(),i(o,{"initial-chat-id":String(r(t).params.id)},null,8,["initial-chat-id"])}}});export{d as default};

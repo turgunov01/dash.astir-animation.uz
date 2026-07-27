@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ApiErrorInfo } from '~/types/api'
+import type { StreamingState } from '~/types/streaming'
 
 const props = defineProps<{
   movieId: string | number
@@ -35,10 +36,48 @@ watch(posterFile, (file) => {
 onBeforeUnmount(() => {
   if (posterObjectUrl.value) URL.revokeObjectURL(posterObjectUrl.value)
 })
-const statusLabel = computed(() => transcodeStatusLabel(props.movie))
-const statusTone = computed(() => transcodeStatusTone(props.movie))
-const progressVisible = computed(() => transcodeProgressVisible(props.movie))
-const progressPercent = computed(() => transcodeProgressPercent(props.movie) ?? 0)
+// Video readiness now lives in the multi-audio streaming contour
+// (/streaming-assets), not in the movie payload's `transcode_status`.
+// The movie detail endpoint still reports `missing_source`, so prefer the
+// streaming state to stop the badge showing a false "Видео не загружено"
+// for movies that are actually ready. Fall back to `transcode_status`
+// only when there is no streaming signal at all (old single-transcode flow).
+const STREAMING_BASE_TEMPLATES = ['/v1/content/movies/{id}', '/v1/content/{id}']
+const streamingState = ref<StreamingState>(normalizeStreamingState({}))
+const hasStreaming = computed(() => hasStreamingSignal(streamingState.value))
+
+async function loadStreamingState() {
+  for (const base of STREAMING_BASE_TEMPLATES) {
+    try {
+      const response = await api.get(resolveEndpoint(`${base}/streaming-assets`, { id: props.movieId }))
+      streamingState.value = normalizeStreamingState(response)
+      return
+    } catch {
+      // 404 / wrong base — try the next template, then fall back to transcode_status.
+    }
+  }
+}
+
+onMounted(loadStreamingState)
+// Parent replaces `movie` after any update (poster/video upload); re-sync the badge.
+watch(() => props.movie, loadStreamingState)
+
+const statusLabel = computed(() =>
+  hasStreaming.value
+    ? streamingStatusLabel(streamingState.value.streamingStatus)
+    : transcodeStatusLabel(props.movie)
+)
+const statusTone = computed(() =>
+  hasStreaming.value
+    ? streamingStatusTone(streamingState.value.streamingStatus)
+    : transcodeStatusTone(props.movie)
+)
+const progressVisible = computed(() =>
+  hasStreaming.value ? false : transcodeProgressVisible(props.movie)
+)
+const progressPercent = computed(() =>
+  hasStreaming.value ? 0 : (transcodeProgressPercent(props.movie) ?? 0)
+)
 
 async function uploadPoster() {
   if (!posterFile.value) {

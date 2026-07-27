@@ -11,7 +11,7 @@ const uploadQueue = useUploadQueueStore()
 const search = ref('')
 const filterValues = ref<Record<string, unknown>>({})
 const page = ref(1)
-const limit = 20
+const limit = ref(10)
 const items = ref<Record<string, unknown>[]>([])
 const total = ref(0)
 const loading = ref(false)
@@ -22,10 +22,10 @@ const handledUploadTaskIds = new Set<string>()
 
 const hasNextPage = computed(() => {
   // Prefer a real backend total when it exceeds the rows we've paged through.
-  if (total.value > page.value * limit) return true
+  if (total.value > page.value * limit.value) return true
   // Fallback for endpoints that return a bare array without a reliable total:
   // a full page implies there may be a next one.
-  return items.value.length >= limit
+  return items.value.length >= limit.value
 })
 
 // Reset to the first page whenever the search or filters change, otherwise the
@@ -62,7 +62,7 @@ async function load() {
     const response = await api.get(props.definition.listEndpoint, {
       search: search.value,
       page: page.value,
-      limit,
+      limit: limit.value,
       ...filterValues.value
     })
     const normalized = normalizeList(response, props.definition.key)
@@ -75,6 +75,13 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function onLimitChange(next: number) {
+  if (next === limit.value) return
+  limit.value = next
+  if (page.value === 1) void load()
+  else page.value = 1
 }
 
 function rowRoute(row: Record<string, unknown>): string {
@@ -246,13 +253,15 @@ async function confirmDelete() {
           </table>
         </div>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px;">
-          <span style="color: var(--muted); font-size: 13px;">Всего: {{ total }}</span>
-          <div style="display: flex; gap: 8px;">
-            <button class="button secondary" type="button" :disabled="page <= 1" @click="page--">Назад</button>
-            <button class="button secondary" type="button" :disabled="!hasNextPage" @click="page++">Вперед</button>
-          </div>
-        </div>
+        <DataTablePagination
+          v-if="items.length"
+          :page="page"
+          :total="total"
+          :limit="limit"
+          :has-next="hasNextPage"
+          @update:page="page = $event"
+          @update:limit="onLimitChange"
+        />
       </div>
     </div>
 

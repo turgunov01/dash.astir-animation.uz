@@ -9,6 +9,22 @@ const MISSING_SOURCE_STATUSES = ['missing_source', 'no_source', 'source_missing'
 const PUBLISHED_STATUSES = ['published', 'active', 'enabled']
 
 export function transcodeStatusValue(row: Record<string, unknown> | null | undefined): string {
+  // The multi-audio streaming contour (/streaming-assets) is the source of truth
+  // for video readiness. When a row carries a streaming signal, prefer it over the
+  // legacy `transcode_status`, which stays `missing_source` for streaming content.
+  const streaming = String(
+    getResourceValue(row, 'streamingStatus') ??
+    getResourceValue(row, 'streaming_status') ??
+    ''
+  ).trim().toLowerCase()
+  if (streaming) return streaming
+
+  const hls =
+    getResourceValue(row, 'hlsUrl') ??
+    getResourceValue(row, 'hls_url') ??
+    getResourceValue(row, 'hls_master_url')
+  if (typeof hls === 'string' && hls.trim()) return 'ready'
+
   return String(
     getResourceValue(row, 'transcode_status') ??
     getResourceValue(row, 'playback.status') ??

@@ -1,0 +1,15 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="emerald" x1="128" y1="96" x2="384" y2="416" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#34d399"/>
+      <stop offset="1" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <!-- full-bleed dark background (maskable-safe) -->
+  <rect width="512" height="512" fill="#0b0c0e"/>
+  <!-- emerald "A" mark, kept within the central safe zone -->
+  <path d="M256 128 L360 384 L308 384 L286 326 L226 326 L204 384 L152 384 Z M256 214 L238 282 L274 282 Z"
+        fill="url(#emerald)"/>
+  <!-- play spark: animation / streaming cue -->
+  <circle cx="256" cy="150" r="14" fill="#34d399"/>
+</svg>
