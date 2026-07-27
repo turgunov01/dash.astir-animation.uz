@@ -635,13 +635,12 @@ async function confirmDelete() {
           </tr>
           <tr v-for="item in displayRows" v-else :key="item.key">
             <td class="poster-cell">
-              <button v-if="item.poster" class="poster-thumb" type="button" title="Открыть постер"
-                @click="openImagePreview(item)">
-                <DeferredImage :src="item.posterThumb || item.poster" :fallback-src="item.poster" :alt="item.title" />
-              </button>
-              <div v-else class="poster-thumb poster-fallback">
+              <button v-if="item.poster" class="button secondary small-action poster-view-btn" type="button"
+                title="Посмотреть постер" @click="openImagePreview(item)">
                 <AppIcon name="i-lucide-image" />
-              </div>
+                Постер
+              </button>
+              <span v-else class="poster-none">—</span>
             </td>
             <td>
               <strong class="catalog-title">{{ item.title }}</strong>
