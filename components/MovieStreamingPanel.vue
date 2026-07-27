@@ -26,6 +26,8 @@ const state = ref<StreamingState>(normalizeStreamingState(props.movie))
 const loading = ref(false)
 const uploading = ref(false)
 const reprocessing = ref(false)
+const detachingLanguage = ref('')
+const purging = ref(false)
 const error = ref<ApiErrorInfo | null>(null)
 const notice = ref('')
 const formKey = ref(0)
@@ -188,6 +190,52 @@ async function reprocess() {
   }
 }
 
+// Deletes immediately, no confirmation. Removing the only remaining track wipes
+// the whole asset set server-side (video included) and reports it via `wiped`.
+async function detachAudio(languageCode: string, label: string) {
+  if (detachingLanguage.value || purging.value) return
+
+  detachingLanguage.value = languageCode
+  error.value = null
+  notice.value = ''
+
+  try {
+    const base = await ensureBase()
+    const response = await api.remove<Record<string, unknown>>(
+      streamingEndpoint(base, `/audio/${encodeURIComponent(languageCode)}`)
+    )
+    applyState(normalizeStreamingState(response))
+    notice.value = response?.wiped === true
+      ? `«${label}» была последней дорожкой — видео и все ассеты удалены с сервера.`
+      : `Дорожка «${label}» удалена. HLS-мастер пересобран без неё.`
+    emit('updated')
+  } catch (requestError) {
+    error.value = requestError as ApiErrorInfo
+  } finally {
+    detachingLanguage.value = ''
+  }
+}
+
+async function purgeAssets() {
+  if (purging.value || detachingLanguage.value) return
+
+  purging.value = true
+  error.value = null
+  notice.value = ''
+
+  try {
+    const base = await ensureBase()
+    const response = await api.remove<Record<string, unknown>>(streamingEndpoint(base))
+    applyState(normalizeStreamingState(response))
+    notice.value = 'Видео, аудиодорожки, субтитры и собранный HLS удалены с сервера.'
+    emit('updated')
+  } catch (requestError) {
+    error.value = requestError as ApiErrorInfo
+  } finally {
+    purging.value = false
+  }
+}
+
 async function copyHls() {
   if (!hlsUrl.value || !process.client || !navigator.clipboard) return
   try {
@@ -236,6 +284,17 @@ function trackUrl(value: string | null): string {
           <AppIcon :name="reprocessing ? 'i-lucide-loader-circle' : 'i-lucide-refresh-ccw-dot'" :spin="reprocessing" />
           Переобработать
         </button>
+        <button
+          v-if="hasAssets"
+          class="button danger"
+          type="button"
+          :disabled="purging || Boolean(detachingLanguage)"
+          title="Удалить видео, дорожки, субтитры и собранный HLS с сервера"
+          @click="purgeAssets"
+        >
+          <AppIcon :name="purging ? 'i-lucide-loader-circle' : 'i-lucide-trash-2'" :spin="purging" />
+          Удалить всё
+        </button>
       </div>
     </div>
 
@@ -278,21 +337,54 @@ function trackUrl(value: string | null): string {
       <div class="streaming-tracks">
         <div>
           <span class="field-label">Аудиодорожки</span>
-          <div class="streaming-chips">
-            <span
+          <ul v-if="state.audioTracks.length" class="audio-track-list">
+            <li
               v-for="track in state.audioTracks"
               :key="`audio-${track.languageCode}`"
-              class="tag-chip removable"
-              :class="{ active: track.isDefault }"
+              class="audio-track-row"
+              :class="{ pending: detachingLanguage === track.languageCode }"
             >
-              <AppIcon v-if="track.isDefault" name="i-lucide-star" />
-              {{ track.label }}
-              <a v-if="trackUrl(track.url)" :href="trackUrl(track.url)" target="_blank" rel="noopener" title="Плейлист">
-                <AppIcon name="i-lucide-link" />
-              </a>
-            </span>
-            <span v-if="!state.audioTracks.length" class="streaming-empty">нет дорожек</span>
-          </div>
+              <span class="audio-track-name">
+                <AppIcon v-if="track.isDefault" name="i-lucide-star" class="audio-track-star" />
+                {{ track.label }}
+                <span class="audio-track-code">{{ track.languageCode }}</span>
+                <span v-if="track.isDefault" class="audio-track-badge">основная</span>
+              </span>
+
+              <span class="audio-track-actions">
+                <a
+                  v-if="trackUrl(track.url)"
+                  class="button icon"
+                  :href="trackUrl(track.url)"
+                  target="_blank"
+                  rel="noopener"
+                  title="Открыть плейлист дорожки"
+                >
+                  <AppIcon name="i-lucide-link" />
+                </a>
+                <button
+                  type="button"
+                  class="button danger audio-track-detach"
+                  :disabled="Boolean(detachingLanguage) || purging"
+                  :title="state.audioTracks.length === 1
+                    ? 'Последняя дорожка: вместе с ней будут удалены видео и все ассеты'
+                    : 'Удалить дорожку и пересобрать HLS-мастер'"
+                  @click="detachAudio(track.languageCode, track.label)"
+                >
+                  <AppIcon
+                    :name="detachingLanguage === track.languageCode ? 'i-lucide-loader-circle' : 'i-lucide-trash-2'"
+                    :spin="detachingLanguage === track.languageCode"
+                  />
+                  {{ detachingLanguage === track.languageCode ? 'Удаляю…' : 'Удалить' }}
+                </button>
+              </span>
+            </li>
+          </ul>
+          <span v-else class="streaming-empty">нет дорожек</span>
+          <p v-if="state.audioTracks.length === 1" class="streaming-hint audio-track-warning">
+            <AppIcon name="i-lucide-triangle-alert" />
+            Дорожка последняя: удаление снесёт видео и все ассеты этого фильма.
+          </p>
         </div>
 
         <div>
@@ -478,6 +570,108 @@ function trackUrl(value: string | null): string {
 .streaming-chips .tag-chip a {
   display: inline-flex;
   color: inherit;
+}
+
+/* One row per audio track so the destructive action can carry a real label. */
+.audio-track-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.audio-track-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.audio-track-row.pending {
+  opacity: 0.65;
+}
+
+.audio-track-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.audio-track-star {
+  width: 14px;
+  height: 14px;
+  color: var(--primary);
+}
+
+.audio-track-code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.audio-track-badge {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.audio-track-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Outlined until hovered: destructive, but not shouting on every row. */
+.audio-track-detach.button.danger {
+  height: 32px;
+  padding: 0 10px;
+  gap: 6px;
+  font-size: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border));
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+  color: var(--danger);
+}
+
+.audio-track-detach.button.danger:hover:not(:disabled),
+.audio-track-detach.button.danger:focus-visible {
+  background: var(--danger);
+  color: #fff;
+}
+
+.audio-track-detach.button.danger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.audio-track-actions .button.icon {
+  width: 32px;
+  height: 32px;
+}
+
+.audio-track-warning {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  color: var(--danger);
+}
+
+.audio-track-warning .app-icon {
+  width: 14px;
+  height: 14px;
 }
 
 .streaming-empty {
